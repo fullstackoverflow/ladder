@@ -1,0 +1,13 @@
+{
+  "template": "./template.json",
+  "upstreams": [
+    {
+      "name": "demo-uri-list",
+      "source": "local",
+      "from": "./sample/demo-uri-list.txt",
+      "type": "Node_list",
+      "format": "raw",
+      "refresh": 300
+    }
+  ]
+}

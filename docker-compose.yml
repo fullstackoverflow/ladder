@@ -1,0 +1,15 @@
+services:
+  ladder:
+    build: .
+    image: ghcr.io/fullstackoverflow/ladder:latest
+    container_name: ladder-service
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - CONFIG_PATH=/app/config.json
+      - TEMPLATE_PATH=/app/template.json
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./template.json:/app/template.json:ro

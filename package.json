@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "@koa/router": "^15.5.0",
+    "koa": "^3.2.1",
+    "typia": "^12.1.1",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/koa": "^3.0.3",
+    "@types/node": "^25.9.1",
+    "ts-patch": "^4.0.1",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "dev": "npm run build && node dist/app.js -p 4000 -c ./config.json -t ./template.json",
+    "build": "tsc",
+    "prepare": "ts-patch install"
+  },
+  "name": "ladder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
