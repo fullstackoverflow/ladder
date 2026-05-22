@@ -197,6 +197,10 @@ function AsNumber(value: unknown): number | undefined {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function FormatClashDuration(value: unknown): string | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? `${value}s` : undefined;
+}
+
 function NormalizeAnyTlsNode(input: Record<string, unknown>, source: 'clash' | 'native' = 'native'): Record<string, unknown> {
     const output: Record<string, unknown> = { ...input };
     const tls: TlsOptions = { enabled: true };
@@ -221,13 +225,19 @@ function NormalizeAnyTlsNode(input: Record<string, unknown>, source: 'clash' | '
         delete output.udp;
     }
 
-    if (typeof output['idle-session-check-interval'] === 'number') {
-        output.idle_session_check_interval = output['idle-session-check-interval'];
+    const idleSessionCheckInterval = source === 'clash'
+        ? FormatClashDuration(output['idle-session-check-interval'])
+        : output['idle-session-check-interval'];
+    if (idleSessionCheckInterval !== undefined) {
+        output.idle_session_check_interval = idleSessionCheckInterval;
         delete output['idle-session-check-interval'];
     }
 
-    if (typeof output['idle-session-timeout'] === 'number') {
-        output.idle_session_timeout = output['idle-session-timeout'];
+    const idleSessionTimeout = source === 'clash'
+        ? FormatClashDuration(output['idle-session-timeout'])
+        : output['idle-session-timeout'];
+    if (idleSessionTimeout !== undefined) {
+        output.idle_session_timeout = idleSessionTimeout;
         delete output['idle-session-timeout'];
     }
 
