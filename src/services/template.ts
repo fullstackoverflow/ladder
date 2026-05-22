@@ -1,8 +1,12 @@
-import { readFileSync } from "fs";
+import { readFileSync, watch, FSWatcher } from "fs";
+import { writeFile } from "node:fs/promises";
 import { AnyObject, Template } from '../util/type';
 import { Node } from "./node";
 
 let template: Template | undefined = undefined;
+let templatePath: string | undefined = undefined;
+let watcher: FSWatcher | undefined = undefined;
+let reloadTimer: NodeJS.Timeout | undefined = undefined;
 
 const BUILTIN_OUTBOUND_TYPES = new Set(['selector', 'urltest', 'direct', 'block']);
 
@@ -32,12 +36,45 @@ function DedupeNodes(nodes: Node[]): Node[] {
 }
 
 export function LoadTemplate(path: string) {
+    templatePath = path;
     const content = readFileSync(path, { encoding: 'utf8' });
     template = JSON.parse(content);
+    return template;
 }
 
 export function GetTemplate() {
     return template;
+}
+
+export function GetTemplateContent() {
+    if (!templatePath) throw new Error('template path is not initialized');
+    return readFileSync(templatePath, { encoding: 'utf8' });
+}
+
+export function GetTemplatePath() {
+    return templatePath;
+}
+
+export async function SaveTemplate(content: string) {
+    if (!templatePath) throw new Error('template path is not initialized');
+    const nextTemplate = JSON.parse(content);
+    await writeFile(templatePath, JSON.stringify(nextTemplate, null, 2), { encoding: 'utf8' });
+    template = nextTemplate;
+}
+
+export function WatchTemplate() {
+    if (!templatePath) throw new Error('template path is not initialized');
+    watcher?.close();
+    watcher = watch(templatePath, () => {
+        if (reloadTimer) clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(() => {
+            try {
+                LoadTemplate(templatePath as string);
+            } catch (error) {
+                console.error('Failed to reload template:', error);
+            }
+        }, 100);
+    });
 }
 
 export function MergeTemplate(template: Template, nodes: Node[]): Template {

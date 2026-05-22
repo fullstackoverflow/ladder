@@ -3,3 +3,4 @@ dist
 config.json
 sample/*
 !.gitkeep
+!sample/demo-uri-list.txt

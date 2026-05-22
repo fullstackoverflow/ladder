@@ -11,5 +11,5 @@ services:
       - CONFIG_PATH=/app/config.json
       - TEMPLATE_PATH=/app/template.json
     volumes:
-      - ./config.json:/app/config.json:ro
-      - ./template.json:/app/template.json:ro
+      - ./config.json:/app/config.json
+      - ./template.json:/app/template.json

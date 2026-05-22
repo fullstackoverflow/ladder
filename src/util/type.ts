@@ -47,10 +47,6 @@ export interface Upstream {
      */
     from: string
     /**
-     * 具体的内容格式
-     */
-    type: UpstreamType
-    /**
      * 内容是否编码过(仅支持base64解码目前)
      */
     encoding?: UpstreamEncoding
@@ -62,10 +58,21 @@ export interface Upstream {
      * 定时刷新时间
      */
     refresh?: number
+    /**
+     * 拉取失败重试次数
+     */
+    retry?: number
+    /**
+     * 重试间隔秒数
+     */
+    retryInterval?: number
+    /**
+     * 重试退避倍数
+     */
+    retryBackoff?: number
 }
 
 export interface Config {
-    // template: Template,
-    template: any,
+    template?: any,
     upstreams: Array<Upstream>
 }

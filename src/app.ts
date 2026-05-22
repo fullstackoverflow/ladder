@@ -3,9 +3,9 @@ import router from './routers/index';
 import { parseArgs } from 'node:util';
 import { validate } from 'typia';
 import { GetGlobalOptions, Options, SetGlobalOptions } from './util/global';
-import { GetConfig, LoadConfig } from './services/config';
-import { LoadTemplate } from './services/template';
-import { GetResourceManager, Resource } from './services/resource';
+import { GetConfig, LoadConfig, WatchConfig } from './services/config';
+import { LoadTemplate, WatchTemplate } from './services/template';
+import { GetResourceManager } from './services/resource';
 
 const { values } = parseArgs({
     options: {
@@ -37,11 +37,13 @@ LoadConfig(GetGlobalOptions().config);
 LoadTemplate(GetGlobalOptions().template);
 
 const resource_manager = GetResourceManager();
+resource_manager.SetUpstreams(GetConfig()?.upstreams ?? []);
 
-GetConfig()?.upstreams.forEach(upstream => {
-    const resource = new Resource(upstream);
-    resource_manager.AddResource(resource);
+WatchConfig((config) => {
+    resource_manager.SetUpstreams(config.upstreams);
 });
+
+WatchTemplate();
 
 export const app = new Koa();
 

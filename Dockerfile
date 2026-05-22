@@ -20,6 +20,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/src/static ./dist/static
 COPY template.json ./template.json
 
 CMD ["sh", "-c", "node ./dist/app.js -p ${PORT} -c ${CONFIG_PATH} -t ${TEMPLATE_PATH}"]

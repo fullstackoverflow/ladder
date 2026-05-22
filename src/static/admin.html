@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ladder admin</title>
+  <link rel="stylesheet" href="/admin/app.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>ladder admin</h1>
+      <p>订阅同步、模板合并和运行状态</p>
+    </div>
+    <nav class="actions" aria-label="页面操作">
+      <button id="refresh" type="button">刷新状态</button>
+      <a class="button" href="/subscribe">订阅 JSON</a>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <section class="panel status-panel" aria-labelledby="status-title">
+      <div class="panel-head">
+        <div>
+          <h2 id="status-title">同步状态</h2>
+          <p id="paths" class="muted"></p>
+        </div>
+        <span id="status-summary" class="summary-pill"></span>
+      </div>
+      <div id="status-list" class="resource-list"></div>
+    </section>
+
+    <section class="panel editor-panel" aria-labelledby="editor-title">
+      <div class="panel-head editor-head">
+        <div>
+          <h2 id="editor-title">配置编辑</h2>
+          <p class="muted">保存后会写回文件；config 会重建上游资源，template 会被动态加载。</p>
+        </div>
+        <div class="editor-actions">
+          <div class="tabs" role="tablist" aria-label="编辑目标">
+            <button id="tab-config" type="button" class="active" role="tab" aria-selected="true">config.json</button>
+            <button id="tab-template" type="button" role="tab" aria-selected="false">template.json</button>
+          </div>
+          <button id="save" type="button" class="primary">保存</button>
+        </div>
+      </div>
+      <p id="message" class="message" role="status"></p>
+      <textarea id="editor" spellcheck="false" aria-label="JSON 编辑器"></textarea>
+    </section>
+  </main>
+
+  <script src="/admin/app.js"></script>
+</body>
+</html>

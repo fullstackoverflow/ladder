@@ -1,8 +1,10 @@
 import Router from '@koa/router';
-import statusRouter from './subscribe';
+import adminRouter from './admin';
+import subscribeRouter from './subscribe';
 
 const router = new Router();
 
-router.use(statusRouter.routes(), statusRouter.allowedMethods());
+router.use(adminRouter.routes(), adminRouter.allowedMethods());
+router.use(subscribeRouter.routes(), subscribeRouter.allowedMethods());
 
 export default router;
