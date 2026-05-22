@@ -65,6 +65,35 @@ router.get('/api/status', async ctx => {
   };
 });
 
+router.post('/api/sync', async ctx => {
+  try {
+    ctx.body = {
+      resources: await GetResourceManager().Sync(),
+    };
+  } catch (error) {
+    ctx.status = 502;
+    ctx.body = error instanceof Error ? error.message : String(error);
+  }
+});
+
+router.post('/api/sync/:index', async ctx => {
+  const index = Number(ctx.params.index);
+  if (!Number.isInteger(index) || index < 0) {
+    ctx.status = 400;
+    ctx.body = 'invalid upstream index';
+    return;
+  }
+
+  try {
+    ctx.body = {
+      resources: await GetResourceManager().Sync(index),
+    };
+  } catch (error) {
+    ctx.status = 502;
+    ctx.body = error instanceof Error ? error.message : String(error);
+  }
+});
+
 router.get('/api/config', async ctx => {
   ctx.type = 'application/json';
   ctx.body = GetConfigContent();
@@ -96,4 +125,3 @@ router.put('/api/template', async ctx => {
 });
 
 export default router;
-

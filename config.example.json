@@ -5,11 +5,9 @@
       "name": "demo-uri-list",
       "source": "local",
       "from": "./sample/demo-uri-list.txt",
+      "type": "uri",
       "format": "raw",
-      "refresh": 300,
-      "retry": 3,
-      "retryInterval": 3,
-      "retryBackoff": 2
+      "refresh": 300
     }
   ]
 }

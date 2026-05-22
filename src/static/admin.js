@@ -12,6 +12,7 @@ const dom = {
   tabTemplate: document.getElementById('tab-template'),
   save: document.getElementById('save'),
   refresh: document.getElementById('refresh'),
+  syncAll: document.getElementById('sync-all'),
 };
 
 function setMessage(text, bad = false) {
@@ -22,6 +23,7 @@ function setMessage(text, bad = false) {
 function setLoading(loading) {
   dom.save.disabled = loading;
   dom.refresh.disabled = loading;
+  dom.syncAll.disabled = loading;
 }
 
 function appendMeta(parent, label, value) {
@@ -50,6 +52,23 @@ function appendBlock(parent, className, text) {
   return node;
 }
 
+function formatLocalTime(value) {
+  if (!value) return '-';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
 function renderResource(resource) {
   const card = document.createElement('article');
   card.className = 'resource';
@@ -65,22 +84,30 @@ function renderResource(resource) {
   pill.className = `status-pill ${resource.ready ? 'ok' : 'bad'}`;
   pill.textContent = resource.ready ? 'ready' : 'not ready';
   title.appendChild(pill);
+
+  const syncButton = document.createElement('button');
+  syncButton.type = 'button';
+  syncButton.className = 'resource-sync';
+  syncButton.textContent = '同步';
+  syncButton.addEventListener('click', () => void syncResource(resource.index));
+  title.appendChild(syncButton);
   card.appendChild(title);
 
   const meta = document.createElement('div');
   meta.className = 'resource-meta';
   appendMeta(meta, 'source', resource.source);
+  appendMeta(meta, 'type', resource.type || '-');
   appendMeta(meta, 'format', resource.format);
   appendMeta(meta, 'content', `${resource.contentLength ?? 0} chars`);
   appendMeta(meta, 'failures', String(resource.failureCount ?? 0));
   appendMeta(meta, 'refresh', resource.refresh ? `${resource.refresh}s` : '-');
-  appendMeta(meta, 'last success', resource.lastSuccessAt || '-');
+  appendMeta(meta, 'last success', formatLocalTime(resource.lastSuccessAt));
   card.appendChild(meta);
 
   appendBlock(card, 'resource-url', resource.from || '-');
 
   if (resource.lastError) {
-    appendBlock(card, 'bad', `last error: ${resource.lastError}`);
+    appendBlock(card, 'bad', `last error: ${formatLocalTime(resource.lastErrorAt)} · ${resource.lastError}`);
   }
 
   return card;
@@ -133,6 +160,42 @@ async function saveEditor() {
   }
 }
 
+async function syncResource(index) {
+  setLoading(true);
+  setMessage('正在同步...');
+  try {
+    const response = await fetch(`/api/sync/${index}`, { method: 'POST' });
+    const text = await response.text();
+    if (!response.ok) {
+      setMessage(text, true);
+      return;
+    }
+
+    setMessage('同步完成');
+    await loadStatus();
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function syncAll() {
+  setLoading(true);
+  setMessage('正在同步全部上游...');
+  try {
+    const response = await fetch('/api/sync', { method: 'POST' });
+    const text = await response.text();
+    if (!response.ok) {
+      setMessage(text, true);
+      return;
+    }
+
+    setMessage('全部同步完成');
+    await loadStatus();
+  } finally {
+    setLoading(false);
+  }
+}
+
 async function switchEditor(target) {
   state.current = target;
   await loadEditor();
@@ -142,6 +205,7 @@ async function boot() {
   dom.tabConfig.addEventListener('click', () => void switchEditor('config'));
   dom.tabTemplate.addEventListener('click', () => void switchEditor('template'));
   dom.refresh.addEventListener('click', () => void loadStatus());
+  dom.syncAll.addEventListener('click', () => void syncAll());
   dom.save.addEventListener('click', () => void saveEditor());
 
   try {

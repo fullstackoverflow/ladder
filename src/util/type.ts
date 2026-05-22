@@ -22,8 +22,8 @@ export enum UpstreamSource {
 }
 
 export enum UpstreamType {
-    URI_list = 'URI_list',
-    Node_list = 'Node_list'
+    URI = 'uri',
+    Clash = 'clash'
 }
 
 export enum UpstreamFormat {
@@ -46,6 +46,10 @@ export interface Upstream {
      * 文件路径/url
      */
     from: string
+    /**
+     * 上游语义类型(uri/clash)，用于决定字段兼容转换策略
+     */
+    type: UpstreamType
     /**
      * 内容是否编码过(仅支持base64解码目前)
      */

@@ -197,7 +197,7 @@ function AsNumber(value: unknown): number | undefined {
     return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
-function NormalizeAnyTlsNode(input: Record<string, unknown>): Record<string, unknown> {
+function NormalizeAnyTlsNode(input: Record<string, unknown>, source: 'clash' | 'native' = 'native'): Record<string, unknown> {
     const output: Record<string, unknown> = { ...input };
     const tls: TlsOptions = { enabled: true };
 
@@ -215,6 +215,10 @@ function NormalizeAnyTlsNode(input: Record<string, unknown>): Record<string, unk
     if (typeof output.tfo === 'boolean') {
         output.tcp_fast_open = output.tfo;
         delete output.tfo;
+    }
+
+    if (source === 'clash') {
+        delete output.udp;
     }
 
     if (typeof output['idle-session-check-interval'] === 'number') {
@@ -267,6 +271,16 @@ export function NormalizeNode(input: unknown): Node | null {
     return IsNode(normalized) ? normalized : null;
 }
 
+export function NormalizeClashNode(input: unknown): Node | null {
+    if (!IsObject(input)) return null;
+
+    const type = AsString(input.type).toLowerCase();
+    const normalized = type === 'anytls' ? NormalizeAnyTlsNode(input, 'clash') : { ...input };
+    delete normalized.udp;
+
+    return IsNode(normalized) ? normalized : null;
+}
+
 export function NormalizeNodes(input: unknown): Node[] {
     if (Array.isArray(input)) return input.map(NormalizeNode).filter((node): node is Node => node !== null);
 
@@ -274,6 +288,19 @@ export function NormalizeNodes(input: unknown): Node[] {
         for (const key of ['outbounds', 'outbound', 'proxies', 'proxy', 'Proxy']) {
             const value = input[key];
             if (Array.isArray(value)) return NormalizeNodes(value);
+        }
+    }
+
+    return [];
+}
+
+export function NormalizeClashNodes(input: unknown): Node[] {
+    if (Array.isArray(input)) return input.map(NormalizeClashNode).filter((node): node is Node => node !== null);
+
+    if (IsObject(input)) {
+        for (const key of ['proxies', 'proxy', 'Proxy']) {
+            const value = input[key];
+            if (Array.isArray(value)) return NormalizeClashNodes(value);
         }
     }
 

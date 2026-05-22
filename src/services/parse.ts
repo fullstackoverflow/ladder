@@ -1,6 +1,6 @@
 import { parse } from "yaml";
 import { UpstreamEncoding, UpstreamFormat, UpstreamType } from "../util/type";
-import { NormalizeNodes, ParseURIs, ParseURI, Node } from "./node";
+import { NormalizeClashNodes, NormalizeNodes, ParseURI, ParseURIs, Node } from "./node";
 
 function Decode(content: string, encoding?: UpstreamEncoding): string {
     if (encoding) {
@@ -17,18 +17,37 @@ function Decode(content: string, encoding?: UpstreamEncoding): string {
     }
 }
 
-function FormatParseNodeList(content: string, format: UpstreamFormat): Node[] {
+function NormalizeURIArray(payload: unknown): Node[] {
+    if (!Array.isArray(payload)) return [];
+    return NormalizeNodes(payload.filter((item): item is string => typeof item === 'string').map(ParseURI));
+}
+
+function NormalizeParsedPayload(payload: unknown, type: UpstreamType): Node[] {
+    switch (type) {
+        case UpstreamType.Clash:
+            return NormalizeClashNodes(payload);
+        case UpstreamType.URI:
+            return NormalizeURIArray(payload);
+        default:
+            throw new Error(`Unsupported upstream type:${type}`);
+    }
+}
+
+function FormatParseNodeList(content: string, format: UpstreamFormat, type: UpstreamType): Node[] {
     switch (format) {
         case UpstreamFormat.JSON:
             {
-                return NormalizeNodes(JSON.parse(content));
+                return NormalizeParsedPayload(JSON.parse(content), type);
             }
         case UpstreamFormat.Yaml:
             {
-                return NormalizeNodes(parse(content));
+                return NormalizeParsedPayload(parse(content), type);
             }
         case UpstreamFormat.Raw:
             {
+                if (type !== UpstreamType.URI) {
+                    throw new Error(`Unsupported raw upstream type:${type}`);
+                }
                 return NormalizeNodes(ParseURIs(content));
             }
         default:
@@ -36,7 +55,7 @@ function FormatParseNodeList(content: string, format: UpstreamFormat): Node[] {
     }
 }
 
-export async function ParseNodeList(content: string, format: UpstreamFormat, encoding?: UpstreamEncoding) {
+export async function ParseNodeList(content: string, format: UpstreamFormat, encoding: UpstreamEncoding | undefined, type: UpstreamType) {
     content = Decode(content, encoding);
-    return FormatParseNodeList(content, format);
+    return FormatParseNodeList(content, format, type);
 }

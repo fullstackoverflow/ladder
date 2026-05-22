@@ -53,6 +53,7 @@ Example:
       "name": "demo-uri-list",
       "source": "local",
       "from": "./sample/demo-uri-list.txt",
+      "type": "uri",
       "format": "raw",
       "refresh": 300,
       "retry": 3,
@@ -67,6 +68,7 @@ Fields:
 
 - `source`: `local` or `URI`
 - `from`: local file path or remote subscription URL
+- `type`: upstream semantic type, currently `uri` or `clash`
 - `format`: `raw`, `json`, or `yaml`
 - `encoding`: optional, only `base64`
 - `refresh`: optional refresh interval in seconds
@@ -74,7 +76,7 @@ Fields:
 - `retryInterval`: optional retry interval in seconds, defaults to `3`
 - `retryBackoff`: optional retry interval multiplier, defaults to `2`
 
-`raw` input is scanned for proxy URIs. `yaml` and `json` input can be node arrays or objects with fields such as `proxies` / `outbounds`.
+`type: "uri"` scans raw input for proxy URIs, or reads JSON/YAML string arrays. `type: "clash"` reads Clash YAML/JSON objects with `proxies` and strips Clash-only fields like `udp` before outputting sing-box JSON.
 
 ## Admin
 

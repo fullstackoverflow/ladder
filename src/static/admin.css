@@ -226,12 +226,13 @@ button.primary:hover {
 .resource-title {
   display: flex;
   gap: 10px;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: flex-start;
 }
 
 .resource-title strong {
   min-width: 0;
+  margin-right: auto;
   overflow-wrap: anywhere;
   font-size: 14px;
 }
@@ -254,6 +255,12 @@ button.primary:hover {
 
 .status-pill.bad {
   background: var(--bad-bg);
+}
+
+.resource-sync {
+  min-height: 28px;
+  padding: 5px 9px;
+  font-size: 12px;
 }
 
 .resource-meta {

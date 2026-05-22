@@ -3,9 +3,11 @@ import { Upstream, UpstreamSource } from "../util/type";
 import { ParseNodeList } from "./parse";
 
 export interface ResourceStatus {
+    index: number;
     name: string;
     source: UpstreamSource;
     from: string;
+    type?: string;
     format: string;
     refresh?: number;
     ready: boolean;
@@ -59,6 +61,10 @@ export class Resource {
         return this.upstream.encoding;
     }
 
+    get type() {
+        return this.upstream.type;
+    }
+
     get isReady() {
         return this.readyResolved;
     }
@@ -69,8 +75,13 @@ export class Resource {
         this.timer = undefined;
     }
 
-    status(): ResourceStatus {
+    async sync() {
+        await this.fetchWithRetry();
+    }
+
+    status(index: number): ResourceStatus {
         const status: ResourceStatus = {
+            index,
             name: this.upstream.name,
             source: this.upstream.source,
             from: this.upstream.from,
@@ -80,6 +91,7 @@ export class Resource {
             failureCount: this.failureCount,
         };
 
+        if (this.upstream.type !== undefined) status.type = this.upstream.type;
         if (this.upstream.refresh !== undefined) status.refresh = this.upstream.refresh;
         if (this.lastSuccessAt) status.lastSuccessAt = this.lastSuccessAt.toISOString();
         if (this.lastErrorAt) status.lastErrorAt = this.lastErrorAt.toISOString();
@@ -192,14 +204,32 @@ export class ResourceManager {
     }
 
     Status() {
-        return this.pool.map((resource) => resource.status());
+        return this.pool.map((resource, index) => resource.status(index));
+    }
+
+    async Sync(index?: number) {
+        if (index !== undefined) {
+            const resource = this.pool[index];
+            if (!resource) throw new Error(`No upstream at index ${index}`);
+            await resource.sync();
+            return [resource.status(index)];
+        }
+
+        const results = await Promise.allSettled(this.pool.map((resource) => resource.sync()));
+        const rejected = results.filter((result) => result.status === 'rejected');
+        if (rejected.length === results.length && rejected.length > 0) {
+            const reason = rejected[0]?.reason;
+            throw reason instanceof Error ? reason : new Error(String(reason));
+        }
+
+        return this.Status();
     }
 
     async MergeNodes() {
         const nodes = (await Promise.all(this.pool.map(async resource => {
             await resource.ready.catch(() => undefined);
             if (!resource.isReady) return [];
-            return ParseNodeList(resource.content, resource.format, resource.encoding);
+            return ParseNodeList(resource.content, resource.format, resource.encoding, resource.type);
         }))).flat();
 
         return nodes;
