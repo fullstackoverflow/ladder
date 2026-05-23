@@ -11,6 +11,17 @@ export type FilePath = tags.TagBase<{
 
 export type AnyObject = Record<string, any>;
 
+export interface ProfileDns {
+    servers: AnyObject[]
+    nodeDomains: string[]
+}
+
+export interface Profile {
+    name: string
+    nodes: AnyObject[]
+    dns?: ProfileDns
+}
+
 export interface Template {
     outbounds?: AnyObject[]
     [key: string]: any

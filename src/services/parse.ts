@@ -1,5 +1,5 @@
 import { parse } from "yaml";
-import { UpstreamEncoding, UpstreamFormat, UpstreamType } from "../util/type";
+import { AnyObject, Profile, ProfileDns, UpstreamEncoding, UpstreamFormat, UpstreamType } from "../util/type";
 import { NormalizeClashNodes, NormalizeNodes, ParseURI, ParseURIs, Node } from "./node";
 
 function Decode(content: string, encoding?: UpstreamEncoding): string {
@@ -33,6 +33,75 @@ function NormalizeParsedPayload(payload: unknown, type: UpstreamType): Node[] {
     }
 }
 
+function IsObject(value: unknown): value is AnyObject {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function ParseStructuredContent(content: string, format: UpstreamFormat): unknown {
+    switch (format) {
+        case UpstreamFormat.JSON:
+            return JSON.parse(content);
+        case UpstreamFormat.Yaml:
+            return parse(content);
+        default:
+            throw new Error(`Unsupported structured data format:${format}`);
+    }
+}
+
+function DnsServerFromClash(value: unknown, prefix: string, index: number): AnyObject | null {
+    if (typeof value !== 'string' || !value.trim()) return null;
+
+    const tag = `${prefix} / DNS ${index + 1}`;
+    const raw = value.trim();
+
+    if (raw.startsWith('https://')) {
+        const url = new URL(raw);
+        const server: AnyObject = {
+            tag,
+            type: 'https',
+            server: url.hostname,
+            path: `${url.pathname}${url.search}`,
+        };
+
+        if (url.port) server.server_port = Number(url.port);
+        return server;
+    }
+
+    const [host, port] = raw.includes(':') ? raw.split(':', 2) : [raw, undefined];
+    if (!host) return null;
+
+    const server: AnyObject = {
+        tag,
+        type: 'udp',
+        server: host,
+    };
+
+    if (port) server.server_port = Number(port);
+    return server;
+}
+
+function ExtractNodeDomains(nodes: Node[]): string[] {
+    return [...new Set(nodes
+        .map((node) => node.server)
+        .filter((server) => typeof server === 'string' && server.trim() && !/^\d+\.\d+\.\d+\.\d+$/.test(server))
+    )];
+}
+
+function ExtractClashDns(payload: unknown, nodes: Node[], profileName: string): ProfileDns | undefined {
+    if (!IsObject(payload) || !IsObject(payload.dns)) return undefined;
+    const nameservers = payload.dns.nameserver;
+    if (!Array.isArray(nameservers)) return undefined;
+
+    const servers = nameservers
+        .map((server, index) => DnsServerFromClash(server, profileName, index))
+        .filter((server): server is AnyObject => server !== null);
+
+    const nodeDomains = ExtractNodeDomains(nodes);
+    if (servers.length === 0 || nodeDomains.length === 0) return undefined;
+
+    return { servers, nodeDomains };
+}
+
 function FormatParseNodeList(content: string, format: UpstreamFormat, type: UpstreamType): Node[] {
     switch (format) {
         case UpstreamFormat.JSON:
@@ -58,4 +127,23 @@ function FormatParseNodeList(content: string, format: UpstreamFormat, type: Upst
 export async function ParseNodeList(content: string, format: UpstreamFormat, encoding: UpstreamEncoding | undefined, type: UpstreamType) {
     content = Decode(content, encoding);
     return FormatParseNodeList(content, format, type);
+}
+
+export async function ParseProfile(name: string, content: string, format: UpstreamFormat, encoding: UpstreamEncoding | undefined, type: UpstreamType): Promise<Profile> {
+    const decoded = Decode(content, encoding);
+
+    if (format === UpstreamFormat.Raw) {
+        return {
+            name,
+            nodes: FormatParseNodeList(decoded, format, type),
+        };
+    }
+
+    const payload = ParseStructuredContent(decoded, format);
+    const nodes = NormalizeParsedPayload(payload, type);
+    const profile: Profile = { name, nodes };
+    const dns = type === UpstreamType.Clash ? ExtractClashDns(payload, nodes, name) : undefined;
+
+    if (dns) profile.dns = dns;
+    return profile;
 }

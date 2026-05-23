@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { Upstream, UpstreamSource } from "../util/type";
-import { ParseNodeList } from "./parse";
+import { Profile, Upstream, UpstreamSource } from "../util/type";
+import { ParseNodeList, ParseProfile } from "./parse";
 
 export interface ResourceStatus {
     index: number;
@@ -63,6 +63,10 @@ export class Resource {
 
     get type() {
         return this.upstream.type;
+    }
+
+    get name() {
+        return this.upstream.name;
     }
 
     get isReady() {
@@ -233,6 +237,14 @@ export class ResourceManager {
         }))).flat();
 
         return nodes;
+    }
+
+    async Profiles(): Promise<Profile[]> {
+        return (await Promise.all(this.pool.map(async resource => {
+            await resource.ready.catch(() => undefined);
+            if (!resource.isReady) return undefined;
+            return ParseProfile(resource.name, resource.content, resource.format, resource.encoding, resource.type);
+        }))).filter((profile): profile is Profile => profile !== undefined);
     }
 }
 

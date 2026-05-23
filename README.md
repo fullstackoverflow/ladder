@@ -78,6 +78,8 @@ Fields:
 
 `type: "uri"` scans raw input for proxy URIs, or reads JSON/YAML string arrays. `type: "clash"` reads Clash YAML/JSON objects with `proxies` and strips Clash-only fields like `udp` before outputting sing-box JSON.
 
+When a full Clash config includes `dns.nameserver`, ladder converts those upstream DNS servers into sing-box DNS servers and prepends DNS rules for that upstream's node entry domains. For example, node server domains from AmyTelecom are routed to `AmyTelecom / DNS 1`, while your base `route.rules` and `route.rule_set` remain unchanged.
+
 ## Admin
 
 The admin page at `/admin` shows upstream sync status:

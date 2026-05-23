@@ -1,6 +1,6 @@
 import { readFileSync, watch, FSWatcher } from "fs";
 import { writeFile } from "node:fs/promises";
-import { AnyObject, Template } from '../util/type';
+import { AnyObject, Profile, Template } from '../util/type';
 import { Node } from "./node";
 
 let template: Template | undefined = undefined;
@@ -109,4 +109,50 @@ export function MergeTemplate(template: Template, nodes: Node[]): Template {
 
     skeleton.outbounds = [...kept, ...mergedNodes];
     return skeleton as Template;
+}
+
+function MergeDnsProfiles(skeleton: AnyObject, profiles: Profile[]) {
+    const dnsProfiles = profiles.filter((profile) => profile.dns && profile.dns.servers.length > 0 && profile.dns.nodeDomains.length > 0);
+    if (dnsProfiles.length === 0) return;
+
+    if (!skeleton.dns || typeof skeleton.dns !== 'object' || Array.isArray(skeleton.dns)) {
+        skeleton.dns = {};
+    }
+
+    const dns = skeleton.dns as AnyObject;
+    const servers = Array.isArray(dns.servers) ? dns.servers : [];
+    const rules = Array.isArray(dns.rules) ? dns.rules : [];
+    const profileRules: AnyObject[] = [];
+
+    for (const profile of dnsProfiles) {
+        const profileDns = profile.dns;
+        if (!profileDns) continue;
+
+        const selectorTag = `${profile.name} / DNS`;
+        servers.push(...profileDns.servers);
+        if (profileDns.servers.length > 1) {
+            servers.push({
+                tag: selectorTag,
+                type: 'selector',
+                servers: profileDns.servers.map((server) => server.tag).filter(Boolean),
+            });
+        }
+
+        profileRules.push({
+            action: 'route',
+            domain: profileDns.nodeDomains,
+            server: profileDns.servers.length > 1 ? selectorTag : profileDns.servers[0]?.tag,
+        });
+    }
+
+    dns.servers = servers;
+    dns.rules = [...profileRules, ...rules];
+    if (!dns.final && servers[0]?.tag) dns.final = servers[0].tag;
+}
+
+export function MergeProfiles(template: Template, profiles: Profile[]): Template {
+    const nodes = profiles.flatMap((profile) => profile.nodes as Node[]);
+    const merged = MergeTemplate(template, nodes) as AnyObject;
+    MergeDnsProfiles(merged, profiles);
+    return merged as Template;
 }
