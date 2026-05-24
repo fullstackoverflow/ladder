@@ -128,20 +128,12 @@ function MergeDnsProfiles(skeleton: AnyObject, profiles: Profile[]) {
         const profileDns = profile.dns;
         if (!profileDns) continue;
 
-        const selectorTag = `${profile.name} / DNS`;
         servers.push(...profileDns.servers);
-        if (profileDns.servers.length > 1) {
-            servers.push({
-                tag: selectorTag,
-                type: 'selector',
-                servers: profileDns.servers.map((server) => server.tag).filter(Boolean),
-            });
-        }
 
         profileRules.push({
             action: 'route',
             domain: profileDns.nodeDomains,
-            server: profileDns.servers.length > 1 ? selectorTag : profileDns.servers[0]?.tag,
+            server: profileDns.servers[0]?.tag,
         });
     }
 
