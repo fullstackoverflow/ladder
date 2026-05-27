@@ -179,12 +179,9 @@ function MergeDnsProfiles(skeleton: AnyObject, profiles: Profile[]) {
         const profileDns = profile.dns;
         if (!profileDns) continue;
 
-        const profileBootstrapServers = profileDns.bootstrapServers ?? [];
-        const profileBootstrapResolverTag = TagOf(profileBootstrapServers[0]?.tag) || bootstrapResolverTag;
-        const profileServers = profileDns.servers.map((server) => WithDomainResolver(server, profileBootstrapResolverTag));
-        servers.push(...profileBootstrapServers);
+        const profileServers = profileDns.servers.map((server) => WithDomainResolver(server, bootstrapResolverTag));
         servers.push(...profileServers);
-        console.info(`[template] merging dns profile=${profile.name} servers=${profileDns.servers.length} bootstrap=${profileBootstrapServers.length} resolver=${profileBootstrapResolverTag} selected=${profileDns.servers[0]?.tag ?? ''}`);
+        console.info(`[template] merging dns profile=${profile.name} servers=${profileDns.servers.length} resolver=${bootstrapResolverTag} selected=${profileDns.servers[0]?.tag ?? ''}`);
     }
 
     dns.servers = servers;

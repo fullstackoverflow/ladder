@@ -13,7 +13,6 @@ export type AnyObject = Record<string, any>;
 
 export interface ProfileDns {
     servers: AnyObject[]
-    bootstrapServers?: AnyObject[]
     nodeDomains: string[]
 }
 

@@ -231,7 +231,7 @@
         "tag": "Local-DNS",
         "type": "udp",
         "server_port": 53,
-        "server": "223.5.5.5"
+        "server": "119.28.28.28"
       }
     ],
     "rules": [
