@@ -56,6 +56,17 @@ function WithDomainResolver(server: AnyObject, resolverTag: string) {
     };
 }
 
+function WithOutboundDomainResolver(node: Node, resolverTag: string): Node {
+    const outbound = node as AnyObject;
+    if (!resolverTag || !IsDomainAddress(node.server) || outbound.domain_resolver) return node;
+    return {
+        ...node,
+        domain_resolver: {
+            server: resolverTag,
+        },
+    };
+}
+
 function DedupeNodes(nodes: Node[]): Node[] {
     const usedTags = new Set<string>();
     return nodes.map((node) => {
@@ -150,7 +161,7 @@ export function MergeTemplate(template: Template, nodes: Node[]): Template {
 }
 
 function MergeDnsProfiles(skeleton: AnyObject, profiles: Profile[]) {
-    const dnsProfiles = profiles.filter((profile) => profile.dns && profile.dns.servers.length > 0 && profile.dns.nodeDomains.length > 0);
+    const dnsProfiles = profiles.filter((profile) => profile.dns && profile.dns.servers.length > 0);
     if (dnsProfiles.length === 0) {
         console.info(`[template] no profile dns to merge profiles=${profiles.length}`);
         return;
@@ -162,33 +173,45 @@ function MergeDnsProfiles(skeleton: AnyObject, profiles: Profile[]) {
 
     const dns = skeleton.dns as AnyObject;
     const servers = Array.isArray(dns.servers) ? dns.servers : [];
-    const rules = Array.isArray(dns.rules) ? dns.rules : [];
     const bootstrapResolverTag = ResolveDnsBootstrapTag(skeleton, dns, servers);
-    const profileRules: AnyObject[] = [];
 
     for (const profile of dnsProfiles) {
         const profileDns = profile.dns;
         if (!profileDns) continue;
 
-        const profileServers = profileDns.servers.map((server) => WithDomainResolver(server, bootstrapResolverTag));
+        const profileBootstrapServers = profileDns.bootstrapServers ?? [];
+        const profileBootstrapResolverTag = TagOf(profileBootstrapServers[0]?.tag) || bootstrapResolverTag;
+        const profileServers = profileDns.servers.map((server) => WithDomainResolver(server, profileBootstrapResolverTag));
+        servers.push(...profileBootstrapServers);
         servers.push(...profileServers);
-        console.info(`[template] merging dns profile=${profile.name} servers=${profileDns.servers.length} nodeDomains=${profileDns.nodeDomains.length} selected=${profileDns.servers[0]?.tag ?? ''}`);
-
-        profileRules.push({
-            action: 'route',
-            domain: profileDns.nodeDomains,
-            server: profileServers[0]?.tag,
-        });
+        console.info(`[template] merging dns profile=${profile.name} servers=${profileDns.servers.length} bootstrap=${profileBootstrapServers.length} resolver=${profileBootstrapResolverTag} selected=${profileDns.servers[0]?.tag ?? ''}`);
     }
 
     dns.servers = servers;
-    dns.rules = [...profileRules, ...rules];
     if (!dns.final && servers[0]?.tag) dns.final = servers[0].tag;
-    console.info(`[template] merged dns profiles=${dnsProfiles.length} addedRules=${profileRules.length} totalServers=${servers.length} totalRules=${dns.rules.length}`);
+    console.info(`[template] merged dns profiles=${dnsProfiles.length} totalServers=${servers.length}`);
+}
+
+function ResolveProfileNodes(profiles: Profile[]): Node[] {
+    return profiles.flatMap((profile) => {
+        const nodes = profile.nodes as Node[];
+        const resolverTag = TagOf(profile.dns?.servers[0]?.tag);
+        if (!resolverTag) return nodes;
+
+        let resolved = 0;
+        const nextNodes = nodes.map((node) => {
+            const nextNode = WithOutboundDomainResolver(node, resolverTag);
+            if (nextNode !== node) resolved += 1;
+            return nextNode;
+        });
+
+        console.info(`[template] applied outbound domain resolver profile=${profile.name} resolver=${resolverTag} nodes=${resolved}`);
+        return nextNodes;
+    });
 }
 
 export function MergeProfiles(template: Template, profiles: Profile[]): Template {
-    const nodes = profiles.flatMap((profile) => profile.nodes as Node[]);
+    const nodes = ResolveProfileNodes(profiles);
     console.info(`[template] merging profiles=${profiles.length} nodes=${nodes.length}`);
     const merged = MergeTemplate(template, nodes) as AnyObject;
     MergeDnsProfiles(merged, profiles);
