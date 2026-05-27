@@ -19,6 +19,7 @@ export function LoadConfig(path: string) {
         process.exit();
     }
     config = result.data;
+    console.info(`[config] loaded ${config.upstreams.length} upstream(s) from ${path}`);
     return config;
 }
 

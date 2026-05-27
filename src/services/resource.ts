@@ -26,6 +26,10 @@ function ErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : String(error);
 }
 
+function ResourceLabel(upstream: Upstream) {
+    return `${upstream.name} type=${upstream.type} format=${upstream.format} source=${upstream.source}`;
+}
+
 export class Resource {
     content: string = "";
     private timer: NodeJS.Timeout | undefined = undefined;
@@ -109,6 +113,7 @@ export class Resource {
         this.lastSuccessAt = new Date();
         this.lastError = undefined;
         this.failureCount = 0;
+        console.info(`[resource] fetched ${ResourceLabel(this.upstream)} bytes=${content.length}`);
 
         if (!this.readyResolved) {
             this.readyResolved = true;
@@ -120,6 +125,7 @@ export class Resource {
         this.lastErrorAt = new Date();
         this.lastError = ErrorMessage(error);
         this.failureCount += 1;
+        console.warn(`[resource] fetch failed ${ResourceLabel(this.upstream)} failureCount=${this.failureCount}: ${this.lastError}`);
     }
 
     private retryTimes() {
@@ -140,6 +146,7 @@ export class Resource {
 
         while (true) {
             try {
+                console.info(`[resource] fetching ${ResourceLabel(this.upstream)} attempt=${attempt + 1}`);
                 const content = await this[this.upstream.source]();
                 this.markSuccess(content);
                 return content;

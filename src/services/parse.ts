@@ -88,16 +88,33 @@ function ExtractNodeDomains(nodes: Node[]): string[] {
 }
 
 function ExtractClashDns(payload: unknown, nodes: Node[], profileName: string): ProfileDns | undefined {
-    if (!IsObject(payload) || !IsObject(payload.dns)) return undefined;
+    if (!IsObject(payload)) {
+        console.info(`[parse] ${profileName} clash dns skipped: payload is not an object`);
+        return undefined;
+    }
+
+    if (!IsObject(payload.dns)) {
+        console.info(`[parse] ${profileName} clash dns skipped: dns section missing`);
+        return undefined;
+    }
+
     const nameservers = payload.dns.nameserver;
-    if (!Array.isArray(nameservers)) return undefined;
+    if (!Array.isArray(nameservers)) {
+        console.info(`[parse] ${profileName} clash dns skipped: dns.nameserver is not an array`);
+        return undefined;
+    }
 
     const servers = nameservers
         .map((server, index) => DnsServerFromClash(server, profileName, index))
         .filter((server): server is AnyObject => server !== null);
 
     const nodeDomains = ExtractNodeDomains(nodes);
-    if (servers.length === 0 || nodeDomains.length === 0) return undefined;
+    console.info(`[parse] ${profileName} clash dns candidates nameservers=${nameservers.length} servers=${servers.length} nodeDomains=${nodeDomains.length}`);
+
+    if (servers.length === 0 || nodeDomains.length === 0) {
+        console.info(`[parse] ${profileName} clash dns skipped: servers=${servers.length} nodeDomains=${nodeDomains.length}`);
+        return undefined;
+    }
 
     return { servers, nodeDomains };
 }
@@ -133,9 +150,11 @@ export async function ParseProfile(name: string, content: string, format: Upstre
     const decoded = Decode(content, encoding);
 
     if (format === UpstreamFormat.Raw) {
+        const nodes = FormatParseNodeList(decoded, format, type);
+        console.info(`[parse] profile ${name} type=${type} format=${format} nodes=${nodes.length} dns=no`);
         return {
             name,
-            nodes: FormatParseNodeList(decoded, format, type),
+            nodes,
         };
     }
 
@@ -145,5 +164,6 @@ export async function ParseProfile(name: string, content: string, format: Upstre
     const dns = type === UpstreamType.Clash ? ExtractClashDns(payload, nodes, name) : undefined;
 
     if (dns) profile.dns = dns;
+    console.info(`[parse] profile ${name} type=${type} format=${format} nodes=${nodes.length} dns=${dns ? `yes servers=${dns.servers.length} domains=${dns.nodeDomains.length}` : 'no'}`);
     return profile;
 }

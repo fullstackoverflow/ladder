@@ -18,6 +18,44 @@ function TagOf(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
 }
 
+function IsPlainIPv4(value: string) {
+    return /^\d+\.\d+\.\d+\.\d+$/.test(value);
+}
+
+function IsPlainIPv6(value: string) {
+    return value.includes(':') && /^[0-9a-f:]+$/i.test(value);
+}
+
+function IsDomainAddress(value: unknown): value is string {
+    if (typeof value !== 'string' || !value.trim()) return false;
+    return !IsPlainIPv4(value) && !IsPlainIPv6(value);
+}
+
+function ResolveDnsBootstrapTag(skeleton: AnyObject, dns: AnyObject, servers: AnyObject[]) {
+    const route = skeleton.route && typeof skeleton.route === 'object' && !Array.isArray(skeleton.route)
+        ? skeleton.route as AnyObject
+        : {};
+    const routeResolver = route.default_domain_resolver;
+    if (typeof routeResolver === 'string' && routeResolver.trim()) return routeResolver.trim();
+    if (routeResolver && typeof routeResolver === 'object') {
+        const server = TagOf(routeResolver.server);
+        if (server) return server;
+    }
+
+    const final = TagOf(dns.final);
+    if (final) return final;
+
+    return TagOf(servers[0]?.tag);
+}
+
+function WithDomainResolver(server: AnyObject, resolverTag: string) {
+    if (!resolverTag || !IsDomainAddress(server.server) || server.domain_resolver) return server;
+    return {
+        ...server,
+        domain_resolver: resolverTag,
+    };
+}
+
 function DedupeNodes(nodes: Node[]): Node[] {
     const usedTags = new Set<string>();
     return nodes.map((node) => {
@@ -113,7 +151,10 @@ export function MergeTemplate(template: Template, nodes: Node[]): Template {
 
 function MergeDnsProfiles(skeleton: AnyObject, profiles: Profile[]) {
     const dnsProfiles = profiles.filter((profile) => profile.dns && profile.dns.servers.length > 0 && profile.dns.nodeDomains.length > 0);
-    if (dnsProfiles.length === 0) return;
+    if (dnsProfiles.length === 0) {
+        console.info(`[template] no profile dns to merge profiles=${profiles.length}`);
+        return;
+    }
 
     if (!skeleton.dns || typeof skeleton.dns !== 'object' || Array.isArray(skeleton.dns)) {
         skeleton.dns = {};
@@ -122,28 +163,33 @@ function MergeDnsProfiles(skeleton: AnyObject, profiles: Profile[]) {
     const dns = skeleton.dns as AnyObject;
     const servers = Array.isArray(dns.servers) ? dns.servers : [];
     const rules = Array.isArray(dns.rules) ? dns.rules : [];
+    const bootstrapResolverTag = ResolveDnsBootstrapTag(skeleton, dns, servers);
     const profileRules: AnyObject[] = [];
 
     for (const profile of dnsProfiles) {
         const profileDns = profile.dns;
         if (!profileDns) continue;
 
-        servers.push(...profileDns.servers);
+        const profileServers = profileDns.servers.map((server) => WithDomainResolver(server, bootstrapResolverTag));
+        servers.push(...profileServers);
+        console.info(`[template] merging dns profile=${profile.name} servers=${profileDns.servers.length} nodeDomains=${profileDns.nodeDomains.length} selected=${profileDns.servers[0]?.tag ?? ''}`);
 
         profileRules.push({
             action: 'route',
             domain: profileDns.nodeDomains,
-            server: profileDns.servers[0]?.tag,
+            server: profileServers[0]?.tag,
         });
     }
 
     dns.servers = servers;
     dns.rules = [...profileRules, ...rules];
     if (!dns.final && servers[0]?.tag) dns.final = servers[0].tag;
+    console.info(`[template] merged dns profiles=${dnsProfiles.length} addedRules=${profileRules.length} totalServers=${servers.length} totalRules=${dns.rules.length}`);
 }
 
 export function MergeProfiles(template: Template, profiles: Profile[]): Template {
     const nodes = profiles.flatMap((profile) => profile.nodes as Node[]);
+    console.info(`[template] merging profiles=${profiles.length} nodes=${nodes.length}`);
     const merged = MergeTemplate(template, nodes) as AnyObject;
     MergeDnsProfiles(merged, profiles);
     return merged as Template;
