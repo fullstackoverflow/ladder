@@ -113,14 +113,22 @@ dns:
     - api.bilibili.com
     - a.w.bilicdn1.com
 proxies: 
-  {{ toYaml($[0].proxies) }}
+  {{ 
+     toYaml(
+       $.map(upstream=>upstream.proxies).flat()
+     ) 
+  }}
 proxy-groups:
   - name: Proxies
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/qure/color/Proxy.png
     url: http://www.gstatic.com/generate_204
     type: select
     proxies: 
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Netflix
     icon: https://raw.githubusercontent.com/HotKids/Rules/master/Quantumult/X/Images/Icons/Netflix.png
     url: http://www.gstatic.com/generate_204
@@ -128,7 +136,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: HBO
     icon: https://raw.githubusercontent.com/HotKids/Rules/master/Quantumult/X/Images/Icons/HBO
       Max.png
@@ -137,7 +149,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: DisneyPlus
     icon: https://www.naiixi.com/DisneyPlus.png
     url: http://www.gstatic.com/generate_204
@@ -145,7 +161,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: YouTube
     icon: https://raw.githubusercontent.com/HotKids/Rules/master/Quantumult/X/Images/Icons/YouTube.png
     url: http://www.gstatic.com/generate_204
@@ -153,7 +173,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Bahamut
     icon: https://raw.githubusercontent.com/HotKids/Rules/master/Quantumult/X/Images/Icons/Bahamut.png
     url: http://www.gstatic.com/generate_204
@@ -161,7 +185,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Bilibili
     icon: https://raw.githubusercontent.com/HotKids/Rules/master/Quantumult/X/Images/Icons/Bilibili.png
     url: http://www.gstatic.com/generate_204
@@ -169,7 +197,11 @@ proxy-groups:
     proxies:
       - 🎯Direct
       - Proxies
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: MyTVSuper
     icon: https://www.naiixi.com/images/myTVSUPER.png
     url: http://www.gstatic.com/generate_204
@@ -177,7 +209,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: AI
     icon: https://raw.githubusercontent.com/HotKids/Rules/master/Quantumult/X/Images/Color/ChatGPT.png
     url: http://www.gstatic.com/generate_204
@@ -185,7 +221,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Telegram
     icon: https://raw.githubusercontent.com/HotKids/Rules/master/Quantumult/X/Images/Icons/Telegram.png
     url: http://www.gstatic.com/generate_204
@@ -193,7 +233,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Crypto
     icon: https://www.naiixi.com/Crypto.png
     url: http://www.gstatic.com/generate_204
@@ -201,7 +245,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Steam
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/steam.png
     url: http://www.gstatic.com/generate_204
@@ -209,7 +257,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Epic
     icon: https://www.naiixi.com/Epic.png
     url: http://www.gstatic.com/generate_204
@@ -217,7 +269,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Xbox
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/qure/color/Xbox.png
     url: http://www.gstatic.com/generate_204
@@ -225,7 +281,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: PlayStation
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/qure/color/PlayStation_1.png
     url: http://www.gstatic.com/generate_204
@@ -233,7 +293,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Microsoft
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/qure/color/Microsoft.png
     url: http://www.gstatic.com/generate_204
@@ -241,7 +305,11 @@ proxy-groups:
     proxies:
       - 🎯Direct
       - Proxies
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Scholar
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/qure/color/Scholar.png
     url: http://www.gstatic.com/generate_204
@@ -249,7 +317,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Apple
     icon: https://raw.githubusercontent.com/HotKids/Rules/master/Quantumult/X/Images/Icons/Apple.png
     url: http://www.gstatic.com/generate_204
@@ -257,7 +329,11 @@ proxy-groups:
     proxies:
       - 🎯Direct
       - Proxies
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Google
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/google.png
     url: http://www.gstatic.com/generate_204
@@ -265,7 +341,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: Tiktok
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/qure/color/TikTok_1.png
     url: http://www.gstatic.com/generate_204
@@ -273,7 +353,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
   - name: 🎯Direct
     icon: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/qure/color/Direct.png
     url: http://www.gstatic.com/generate_204
@@ -288,7 +372,11 @@ proxy-groups:
     proxies:
       - Proxies
       - 🎯Direct
-      {{ toYaml($[0].proxies.map(proxie=>proxie.name)) }}
+      {{
+          toYaml(
+             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+          )
+      }}
 rules:
   - DOMAIN-SUFFIX,push.apple.com,Proxies
   - DOMAIN-SUFFIX,ping0.cc,🎯Direct
