@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { Profile, Upstream, UpstreamSource } from "../util/type";
-import { ParseNodeList, ParseProfile } from "./parse";
+import { Upstream, UpstreamSource } from "../util/type";
+import { ParseProfile, ParseRawProfile } from "./parse";
 
 export interface ResourceStatus {
     index: number;
@@ -9,6 +9,7 @@ export interface ResourceStatus {
     from: string;
     type?: string;
     format: string;
+    nodeTemplatePath?: string;
     refresh?: number;
     ready: boolean;
     contentLength: number;
@@ -27,7 +28,7 @@ function ErrorMessage(error: unknown) {
 }
 
 function ResourceLabel(upstream: Upstream) {
-    return `${upstream.name} type=${upstream.type} format=${upstream.format} source=${upstream.source}`;
+    return `${upstream.name} format=${upstream.format} source=${upstream.source}`;
 }
 
 export class Resource {
@@ -65,8 +66,8 @@ export class Resource {
         return this.upstream.encoding;
     }
 
-    get type() {
-        return this.upstream.type;
+    get nodeTemplatePath() {
+        return this.upstream.nodeTemplatePath;
     }
 
     get name() {
@@ -99,7 +100,7 @@ export class Resource {
             failureCount: this.failureCount,
         };
 
-        if (this.upstream.type !== undefined) status.type = this.upstream.type;
+        if (this.upstream.nodeTemplatePath !== undefined) status.nodeTemplatePath = this.upstream.nodeTemplatePath;
         if (this.upstream.refresh !== undefined) status.refresh = this.upstream.refresh;
         if (this.lastSuccessAt) status.lastSuccessAt = this.lastSuccessAt.toISOString();
         if (this.lastErrorAt) status.lastErrorAt = this.lastErrorAt.toISOString();
@@ -236,22 +237,28 @@ export class ResourceManager {
         return this.Status();
     }
 
-    async MergeNodes() {
-        const nodes = (await Promise.all(this.pool.map(async resource => {
-            await resource.ready.catch(() => undefined);
-            if (!resource.isReady) return [];
-            return ParseNodeList(resource.content, resource.format, resource.encoding, resource.type);
-        }))).flat();
-
-        return nodes;
-    }
-
-    async Profiles(): Promise<Profile[]> {
+    async Profiles(): Promise<any[]> {
         return (await Promise.all(this.pool.map(async resource => {
             await resource.ready.catch(() => undefined);
             if (!resource.isReady) return undefined;
-            return ParseProfile(resource.name, resource.content, resource.format, resource.encoding, resource.type);
-        }))).filter((profile): profile is Profile => profile !== undefined);
+            return ParseProfile(resource.content, resource.format, resource.encoding, resource.nodeTemplatePath);
+        }))).filter(Boolean);
+    }
+
+    async RawProfiles(): Promise<any[]> {
+        return (await Promise.all(this.pool.map(async resource => {
+            await resource.ready.catch(() => undefined);
+            if (!resource.isReady) return undefined;
+            return ParseRawProfile(resource.content, resource.format, resource.encoding);
+        }))).filter(Boolean);
+    }
+
+    async RawProfile(index: number): Promise<any> {
+        const resource = this.pool[index];
+        if (!resource) throw new Error(`No upstream at index ${index}`);
+        await resource.ready.catch(() => undefined);
+        if (!resource.isReady) throw new Error(`upstream ${index} is not ready`);
+        return ParseRawProfile(resource.content, resource.format, resource.encoding);
     }
 }
 

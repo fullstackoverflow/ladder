@@ -286,7 +286,15 @@ export function NormalizeClashNode(input: unknown): Node | null {
 
     const type = AsString(input.type).toLowerCase();
     const normalized = type === 'anytls' ? NormalizeAnyTlsNode(input, 'clash') : { ...input };
-    delete normalized.udp;
+
+    if (typeof normalized.name === 'string' && !normalized.tag) {
+        normalized.tag = normalized.name;
+    }
+
+    const port = AsNumber(normalized.port);
+    if (port !== undefined && normalized.server_port === undefined) {
+        normalized.server_port = port;
+    }
 
     return IsNode(normalized) ? normalized : null;
 }

@@ -1,5 +1,17 @@
 {
   "template": "./template.json",
+  "templates": [
+    {
+      "name": "singbox",
+      "target": "singbox",
+      "path": "./template.json"
+    },
+    {
+      "name": "clash",
+      "target": "clash",
+      "path": "./templates/template.yml"
+    }
+  ],
   "upstreams": [
     {
       "name": "demo-uri-list",

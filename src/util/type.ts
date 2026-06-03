@@ -8,23 +8,17 @@ export type FilePath = tags.TagBase<{
     validate: `(() => { try { return $importNamespace("fs", "node:fs").statSync($input).isFile(); } catch { return false; } })()`;
 }>;
 
-
 export type AnyObject = Record<string, any>;
 
-export interface ProfileDns {
-    servers: AnyObject[]
-    nodeDomains: string[]
+export enum OutputTarget {
+    Singbox = 'singbox',
+    Clash = 'clash'
 }
 
-export interface Profile {
+export interface OutputTemplate {
     name: string
-    nodes: AnyObject[]
-    dns?: ProfileDns
-}
-
-export interface Template {
-    outbounds?: AnyObject[]
-    [key: string]: any
+    target: OutputTarget
+    path: string
 }
 
 export enum UpstreamSource {
@@ -32,15 +26,10 @@ export enum UpstreamSource {
     URI = 'URI'
 }
 
-export enum UpstreamType {
-    URI = 'uri',
-    Clash = 'clash'
-}
-
 export enum UpstreamFormat {
     JSON = 'json',
     Yaml = 'yaml',
-    Raw = 'raw'
+    NodeList = 'node-list',
 }
 
 export enum UpstreamEncoding {
@@ -58,15 +47,11 @@ export interface Upstream {
      */
     from: string
     /**
-     * 上游语义类型(uri/clash)，用于决定字段兼容转换策略
-     */
-    type: UpstreamType
-    /**
      * 内容是否编码过(仅支持base64解码目前)
      */
     encoding?: UpstreamEncoding
     /**
-     * 内容(解码后)的格式(json/yaml/raw)
+     * 内容(解码后)的格式(json/yaml/node-list)
      */
     format: UpstreamFormat
     /**
@@ -85,9 +70,13 @@ export interface Upstream {
      * 重试退避倍数
      */
     retryBackoff?: number
+    /**
+     * 可选的本地节点模板文件。模板使用 {{ ... }} JS slot 渲染上游 raw input。
+     */
+    nodeTemplatePath?: string
 }
 
 export interface Config {
-    template?: any,
+    templates: Array<OutputTemplate>,
     upstreams: Array<Upstream>
 }

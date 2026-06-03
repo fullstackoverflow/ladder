@@ -12,6 +12,14 @@ Merge upstream proxy subscriptions into a sing-box config built from `template.j
 - Includes `/admin` for status, config editing, and template editing
 - Runs locally or in Docker
 
+## Design Notes
+
+- [Design document index](docs/README.md)
+- [Multi-template and Clash output plan](docs/multi-template-targets.md)
+- [Sing-box and Clash node compatibility research](docs/node-compatibility-research.md)
+- [Upstream-bound node template plan](docs/upstream-node-template.md)
+- [Admin frontend systematization plan](docs/admin-frontend-plan.md)
+
 ## Local Run
 
 Install dependencies:
@@ -33,6 +41,13 @@ Open:
 http://127.0.0.1:4000/subscribe
 ```
 
+Named template subscriptions are also supported when `templates[]` is configured:
+
+```text
+http://127.0.0.1:4000/subscribe/singbox
+http://127.0.0.1:4000/subscribe/clash
+```
+
 Admin page:
 
 ```text
@@ -48,6 +63,18 @@ Example:
 ```json
 {
   "template": "./template.json",
+  "templates": [
+    {
+      "name": "singbox",
+      "target": "singbox",
+      "path": "./template.json"
+    },
+    {
+      "name": "clash",
+      "target": "clash",
+      "path": "./templates/clash.yaml"
+    }
+  ],
   "upstreams": [
     {
       "name": "demo-uri-list",
@@ -66,6 +93,7 @@ Example:
 
 Fields:
 
+- `templates`: optional named output templates. `target` is `singbox` or `clash`
 - `source`: `local` or `URI`
 - `from`: local file path or remote subscription URL
 - `type`: upstream semantic type, currently `uri` or `clash`
@@ -75,10 +103,11 @@ Fields:
 - `retry`: optional fetch retry count, defaults to `3`
 - `retryInterval`: optional retry interval in seconds, defaults to `3`
 - `retryBackoff`: optional retry interval multiplier, defaults to `2`
+- `nodeTemplatePath`: optional local `node.template` file rendered before node normalization
 
 `type: "uri"` scans raw input for proxy URIs, or reads JSON/YAML string arrays. `type: "clash"` reads Clash YAML/JSON objects with `proxies` and strips Clash-only fields like `udp` before outputting sing-box JSON.
 
-When a full Clash config includes `dns.nameserver`, ladder converts those upstream DNS servers into sing-box DNS servers and prepends DNS rules for that upstream's node entry domains. For example, node server domains from AmyTelecom are routed to `AmyTelecom / DNS 1`, while your base `route.rules` and `route.rule_set` remain unchanged.
+DNS, routing rules, inbounds, and other target-specific behavior are owned by the template. Upstream parsing only contributes proxy nodes.
 
 ## Admin
 
@@ -91,6 +120,7 @@ The admin page at `/admin` shows upstream sync status:
 - failure count
 
 It also lets you edit `config.json` and `template.json`. Template changes are watched and reloaded automatically; config changes rebuild the upstream resource pool.
+When multiple templates are configured, the template editor can switch between named templates such as `singbox` and `clash`.
 
 ## Docker
 

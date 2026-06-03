@@ -12,8 +12,9 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "dev": "npm run build && node dist/app.js -p 4000 -c ./config.json -t ./template.json",
+    "dev": "npm run build && node dist/app.js -p 4000 -c ./config.json",
     "build": "tsc",
+    "test": "npm run build && node --test \"dist/**/*.test.js\"",
     "prepare": "ts-patch install"
   },
   "name": "ladder",

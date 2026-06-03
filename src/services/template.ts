@@ -1,216 +1,72 @@
-import { readFileSync, watch, FSWatcher } from "fs";
-import { writeFile } from "node:fs/promises";
-import { AnyObject, Profile, Template } from '../util/type';
-import { Node } from "./node";
+import * as vm from 'node:vm';
+import * as yaml from 'yaml';
+import { OutputTemplate } from '../util/type';
+import { BaseFile } from './file';
 
-let template: Template | undefined = undefined;
-let templatePath: string | undefined = undefined;
-let watcher: FSWatcher | undefined = undefined;
-let reloadTimer: NodeJS.Timeout | undefined = undefined;
+export function Render(template: string, data: Record<string, any>): string {
+    const regex = /([ \t]*)\{\{([\s\S]+?)\}\}/g;
 
-const BUILTIN_OUTBOUND_TYPES = new Set(['selector', 'urltest', 'direct', 'block']);
-
-function Clone<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value));
-}
-
-function TagOf(value: unknown): string {
-    return typeof value === 'string' ? value.trim() : '';
-}
-
-function IsPlainIPv4(value: string) {
-    return /^\d+\.\d+\.\d+\.\d+$/.test(value);
-}
-
-function IsPlainIPv6(value: string) {
-    return value.includes(':') && /^[0-9a-f:]+$/i.test(value);
-}
-
-function IsDomainAddress(value: unknown): value is string {
-    if (typeof value !== 'string' || !value.trim()) return false;
-    return !IsPlainIPv4(value) && !IsPlainIPv6(value);
-}
-
-function ResolveDnsBootstrapTag(skeleton: AnyObject, dns: AnyObject, servers: AnyObject[]) {
-    const route = skeleton.route && typeof skeleton.route === 'object' && !Array.isArray(skeleton.route)
-        ? skeleton.route as AnyObject
-        : {};
-    const routeResolver = route.default_domain_resolver;
-    if (typeof routeResolver === 'string' && routeResolver.trim()) return routeResolver.trim();
-    if (routeResolver && typeof routeResolver === 'object') {
-        const server = TagOf(routeResolver.server);
-        if (server) return server;
-    }
-
-    const final = TagOf(dns.final);
-    if (final) return final;
-
-    return TagOf(servers[0]?.tag);
-}
-
-function WithDomainResolver(server: AnyObject, resolverTag: string) {
-    if (!resolverTag || !IsDomainAddress(server.server) || server.domain_resolver) return server;
-    return {
-        ...server,
-        domain_resolver: resolverTag,
+    const sandbox = {
+        $: data,
+        toYaml: (obj: any) => yaml.stringify(obj).trimEnd(),
+        toJson: (obj: any) => JSON.stringify(obj, null, 2),
     };
-}
 
-function WithOutboundDomainResolver(node: Node, resolverTag: string): Node {
-    const outbound = node as AnyObject;
-    if (!resolverTag || !IsDomainAddress(node.server) || outbound.domain_resolver) return node;
-    return {
-        ...node,
-        domain_resolver: {
-            server: resolverTag,
-        },
-    };
-}
+    const context = vm.createContext(sandbox);
 
-function DedupeNodes(nodes: Node[]): Node[] {
-    const usedTags = new Set<string>();
-    return nodes.map((node) => {
-        const tag = TagOf(node.tag);
-        let uniqueTag = tag;
-        let index = 2;
+    return template.replace(regex, (match, indent, code, offset) => {
+        try {
+            const scriptStr = code.trim();
+            if (!scriptStr) return '';
+            
+            // 执行内部逻辑
+            let result = vm.runInContext(scriptStr, context);
 
-        while (usedTags.has(uniqueTag)) {
-            uniqueTag = `${tag} (${index})`;
-            index += 1;
-        }
+            if (result === undefined || result === null) return '';
+            
+            let resultStr = typeof result === 'object' ? JSON.stringify(result) : String(result);
 
-        usedTags.add(uniqueTag);
-        return uniqueTag === tag ? node : { ...node, tag: uniqueTag };
-    });
-}
-
-export function LoadTemplate(path: string) {
-    templatePath = path;
-    const content = readFileSync(path, { encoding: 'utf8' });
-    template = JSON.parse(content);
-    return template;
-}
-
-export function GetTemplate() {
-    return template;
-}
-
-export function GetTemplateContent() {
-    if (!templatePath) throw new Error('template path is not initialized');
-    return readFileSync(templatePath, { encoding: 'utf8' });
-}
-
-export function GetTemplatePath() {
-    return templatePath;
-}
-
-export async function SaveTemplate(content: string) {
-    if (!templatePath) throw new Error('template path is not initialized');
-    const nextTemplate = JSON.parse(content);
-    await writeFile(templatePath, JSON.stringify(nextTemplate, null, 2), { encoding: 'utf8' });
-    template = nextTemplate;
-}
-
-export function WatchTemplate() {
-    if (!templatePath) throw new Error('template path is not initialized');
-    watcher?.close();
-    watcher = watch(templatePath, () => {
-        if (reloadTimer) clearTimeout(reloadTimer);
-        reloadTimer = setTimeout(() => {
-            try {
-                LoadTemplate(templatePath as string);
-            } catch (error) {
-                console.error('Failed to reload template:', error);
+            if (resultStr.includes('\n')) {
+                resultStr = resultStr
+                    .split('\n')
+                    .map((line, index) => (index === 0 ? line : indent + line))
+                    .join('\n');
             }
-        }, 100);
+
+            return indent + resultStr;
+        } catch (error) {
+            // 💡 1. 核心改进：计算当前报错的代码在整个模板中的【行号】
+            // 通过 offset（匹配位置在整个字符串中的索引）来计算
+            const beforeMatch = template.substring(0, offset);
+            const lineNumber = beforeMatch.split('\n').length;
+
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            // 💡 2. 在控制台打印极度清晰的错误日志，方便内部排查
+            console.error(`\n[Template Render Error]`);
+            console.error(`↳ Location : Template Line ${lineNumber}`);
+            console.error(`↳ Code     : {{ ${code.trim()} }}`);
+            console.error(`↳ Reason   : ${errorMessage}\n`);
+
+            // 💡 3. 优雅降级：不要把报错信息写进配置文件！
+            // 返回一个空的注释（在 YAML 中是安全的），或者直接返回空字符串
+            // 这样既保证了下游解析不报错，又在控制台留下了完美的 debug 线索
+            return indent + `# [Render Error on Line ${lineNumber}]`;
+        }
     });
 }
 
-export function MergeTemplate(template: Template, nodes: Node[]): Template {
-    const skeleton = Clone(template) as AnyObject;
-    if (!Array.isArray(skeleton.outbounds)) {
-        throw new Error('template outbounds[] is required');
+export class TemplateManager {
+    constructor(private templates: Array<BaseFile> = []) {
     }
 
-    const mergedNodes = DedupeNodes(nodes);
-    const nodeTags = mergedNodes.map((node) => TagOf(node.tag)).filter(Boolean);
-    const kept = (skeleton.outbounds as AnyObject[]).filter((outbound) =>
-        BUILTIN_OUTBOUND_TYPES.has(String(outbound?.type || '').toLowerCase())
-    );
-
-    const selectorTag = '🚀 节点选择';
-    const autoTag = '🎈 自动选择';
-    const directTag = '🎯 全球直连';
-    const fallbackTag = '🐟 漏网之鱼';
-    const globalTag = 'GLOBAL';
-
-    for (const outbound of kept) {
-        if (!Array.isArray(outbound.outbounds)) continue;
-
-        const tag = TagOf(outbound.tag);
-        const type = String(outbound.type || '').toLowerCase();
-
-        if (type === 'selector' && tag === selectorTag) outbound.outbounds = [autoTag, ...nodeTags];
-        if (type === 'urltest' && tag === autoTag) outbound.outbounds = [...nodeTags];
-        if (type === 'selector' && tag === fallbackTag) outbound.outbounds = [selectorTag, directTag];
-        if (type === 'selector' && tag === globalTag) outbound.outbounds = [selectorTag, autoTag, directTag, fallbackTag];
+    AddTemplate(path: string) {
+        this.templates.push(new BaseFile(path));
     }
 
-    skeleton.outbounds = [...kept, ...mergedNodes];
-    return skeleton as Template;
+    GetTemplate(path: string) {
+        return this.templates.find(t => t.path === path);
+    }
 }
 
-function MergeDnsProfiles(skeleton: AnyObject, profiles: Profile[]) {
-    const dnsProfiles = profiles.filter((profile) => profile.dns && profile.dns.servers.length > 0);
-    if (dnsProfiles.length === 0) {
-        console.info(`[template] no profile dns to merge profiles=${profiles.length}`);
-        return;
-    }
-
-    if (!skeleton.dns || typeof skeleton.dns !== 'object' || Array.isArray(skeleton.dns)) {
-        skeleton.dns = {};
-    }
-
-    const dns = skeleton.dns as AnyObject;
-    const servers = Array.isArray(dns.servers) ? dns.servers : [];
-    const bootstrapResolverTag = ResolveDnsBootstrapTag(skeleton, dns, servers);
-
-    for (const profile of dnsProfiles) {
-        const profileDns = profile.dns;
-        if (!profileDns) continue;
-
-        const profileServers = profileDns.servers.map((server) => WithDomainResolver(server, bootstrapResolverTag));
-        servers.push(...profileServers);
-        console.info(`[template] merging dns profile=${profile.name} servers=${profileDns.servers.length} resolver=${bootstrapResolverTag} selected=${profileDns.servers[0]?.tag ?? ''}`);
-    }
-
-    dns.servers = servers;
-    if (!dns.final && servers[0]?.tag) dns.final = servers[0].tag;
-    console.info(`[template] merged dns profiles=${dnsProfiles.length} totalServers=${servers.length}`);
-}
-
-function ResolveProfileNodes(profiles: Profile[]): Node[] {
-    return profiles.flatMap((profile) => {
-        const nodes = profile.nodes as Node[];
-        const resolverTag = TagOf(profile.dns?.servers[0]?.tag);
-        if (!resolverTag) return nodes;
-
-        let resolved = 0;
-        const nextNodes = nodes.map((node) => {
-            const nextNode = WithOutboundDomainResolver(node, resolverTag);
-            if (nextNode !== node) resolved += 1;
-            return nextNode;
-        });
-
-        console.info(`[template] applied outbound domain resolver profile=${profile.name} resolver=${resolverTag} nodes=${resolved}`);
-        return nextNodes;
-    });
-}
-
-export function MergeProfiles(template: Template, profiles: Profile[]): Template {
-    const nodes = ResolveProfileNodes(profiles);
-    console.info(`[template] merging profiles=${profiles.length} nodes=${nodes.length}`);
-    const merged = MergeTemplate(template, nodes) as AnyObject;
-    MergeDnsProfiles(merged, profiles);
-    return merged as Template;
-}
+export const template_manager = new TemplateManager();

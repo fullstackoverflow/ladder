@@ -8,47 +8,192 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
+    <div>
       <h1>ladder admin</h1>
-      <p>订阅同步、模板合并和运行状态</p>
+      <p id="config-path" class="muted">loading...</p>
     </div>
-    <nav class="actions" aria-label="页面操作">
-      <button id="refresh" type="button">刷新状态</button>
-      <button id="sync-all" type="button" class="primary">立即同步</button>
-      <a class="button" href="/subscribe">订阅 JSON</a>
-    </nav>
+    <div class="status-strip">
+      <span id="ready-pill" class="pill">0/0 ready</span>
+      <span id="failed-pill" class="pill">0 failed</span>
+      <span id="template-pill" class="pill">0 templates</span>
+      <button id="refresh" type="button">刷新</button>
+      <button id="sync-all" type="button" class="primary">同步全部</button>
+    </div>
   </header>
 
-  <main class="layout">
-    <section class="panel status-panel" aria-labelledby="status-title">
-      <div class="panel-head">
-        <div>
-          <h2 id="status-title">同步状态</h2>
-          <p id="paths" class="muted"></p>
-        </div>
-        <span id="status-summary" class="summary-pill"></span>
+  <main class="workbench">
+    <section class="panel left-panel" aria-label="配置表单">
+      <div class="tabs" role="tablist" aria-label="配置编辑">
+        <button id="tab-templates" type="button" class="active">Templates</button>
+        <button id="tab-upstreams" type="button">Upstreams</button>
+        <button id="tab-files" type="button">Template Files</button>
       </div>
-      <div id="status-list" class="resource-list"></div>
+
+      <section id="templates-view" class="view active">
+        <div class="section-head">
+          <div>
+            <h2>输出模板</h2>
+            <p class="muted">维护 config.templates，并可进入模板文件编辑。</p>
+          </div>
+          <button id="add-template" type="button">新增模板</button>
+        </div>
+        <div id="templates-list" class="stack"></div>
+      </section>
+
+      <section id="upstreams-view" class="view">
+        <div class="section-head">
+          <div>
+            <h2>上游</h2>
+            <p class="muted">维护 config.upstreams，状态直接显示在每个卡片里。</p>
+          </div>
+          <button id="add-upstream" type="button">新增上游</button>
+        </div>
+        <div id="upstreams-list" class="stack"></div>
+      </section>
+
+      <section id="files-view" class="view">
+        <div class="section-head">
+          <div>
+            <h2>模板文件</h2>
+            <p class="muted">编辑外层订阅模板和具体上游的节点模板。</p>
+          </div>
+          <button id="save-file" type="button" class="primary">保存文件</button>
+        </div>
+        <label class="field">
+          <span>文件</span>
+          <select id="file-picker"></select>
+        </label>
+        <div id="node-raw-panel" class="raw-panel" hidden>
+          <div class="raw-panel-head">
+            <div>
+              <h3>上游 raw input</h3>
+              <p id="node-raw-title" class="muted"></p>
+            </div>
+            <button id="refresh-node-raw" type="button">刷新 raw</button>
+          </div>
+          <pre id="node-raw-preview" class="raw-preview"></pre>
+        </div>
+        <textarea id="file-editor" spellcheck="false"></textarea>
+      </section>
+
+      <p id="message" class="message" role="status"></p>
     </section>
 
-    <section class="panel editor-panel" aria-labelledby="editor-title">
-      <div class="panel-head editor-head">
-        <div>
-          <h2 id="editor-title">配置编辑</h2>
-          <p class="muted">保存后会写回文件；config 会重建上游资源，template 会被动态加载。</p>
+    <section class="panel right-panel" aria-label="只读预览">
+      <div class="inspector-head">
+        <div class="tabs" role="tablist" aria-label="预览">
+          <button id="tab-config-json" type="button" class="active">config.json</button>
+          <button id="tab-rendered" type="button">rendered</button>
+          <button id="tab-profiles" type="button">profiles</button>
         </div>
-        <div class="editor-actions">
-          <div class="tabs" role="tablist" aria-label="编辑目标">
-            <button id="tab-config" type="button" class="active" role="tab" aria-selected="true">config.json</button>
-            <button id="tab-template" type="button" role="tab" aria-selected="false">template.json</button>
-          </div>
-          <button id="save" type="button" class="primary">保存</button>
+        <div class="preview-actions">
+          <label>
+            target
+            <select id="target-picker"></select>
+          </label>
+          <button id="refresh-preview" type="button">刷新预览</button>
         </div>
       </div>
-      <p id="message" class="message" role="status"></p>
-      <textarea id="editor" spellcheck="false" aria-label="JSON 编辑器"></textarea>
+      <pre id="inspector" class="inspector"></pre>
     </section>
   </main>
+
+  <dialog id="template-dialog" class="dialog">
+    <form id="template-form" method="dialog" class="dialog-form">
+      <div class="dialog-head">
+        <h2 id="template-dialog-title">模板</h2>
+      </div>
+      <div class="form-grid">
+        <label class="field">
+          <span>name</span>
+          <input id="template-name" required />
+        </label>
+        <label class="field">
+          <span>target</span>
+          <select id="template-target">
+            <option value="clash">clash</option>
+            <option value="singbox">singbox</option>
+          </select>
+        </label>
+        <label class="field wide">
+          <span>path</span>
+          <input id="template-path" required />
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button id="template-delete" type="button" class="danger">删除</button>
+        <span class="spacer"></span>
+        <button id="template-cancel" type="button">取消</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="upstream-dialog" class="dialog">
+    <form id="upstream-form" method="dialog" class="dialog-form">
+      <div class="dialog-head">
+        <h2 id="upstream-dialog-title">上游</h2>
+      </div>
+      <div class="form-grid">
+        <label class="field">
+          <span>name</span>
+          <input id="upstream-name" required />
+        </label>
+        <label class="field">
+          <span>source</span>
+          <select id="upstream-source">
+            <option value="URI">URI</option>
+            <option value="local">local</option>
+          </select>
+        </label>
+        <label class="field wide">
+          <span>from</span>
+          <input id="upstream-from" required />
+        </label>
+        <label class="field">
+          <span>format</span>
+          <select id="upstream-format">
+            <option value="yaml">yaml</option>
+            <option value="json">json</option>
+            <option value="node-list">node-list</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>encoding</span>
+          <select id="upstream-encoding">
+            <option value="">none</option>
+            <option value="base64">base64</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>refresh</span>
+          <input id="upstream-refresh" type="number" min="1" />
+        </label>
+        <label class="field">
+          <span>retry</span>
+          <input id="upstream-retry" type="number" min="0" />
+        </label>
+        <label class="field">
+          <span>retryInterval</span>
+          <input id="upstream-retry-interval" type="number" min="1" />
+        </label>
+        <label class="field">
+          <span>retryBackoff</span>
+          <input id="upstream-retry-backoff" type="number" min="1" step="0.1" />
+        </label>
+        <label class="field wide">
+          <span>nodeTemplatePath</span>
+          <input id="upstream-node-template" placeholder="./templates/provider.node.yml" />
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button id="upstream-delete" type="button" class="danger">删除</button>
+        <span class="spacer"></span>
+        <button id="upstream-cancel" type="button">取消</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="/admin/app.js"></script>
 </body>
