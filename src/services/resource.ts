@@ -1,4 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { Upstream, UpstreamSource } from "../util/type";
 import { ParseProfile, ParseRawProfile } from "./parse";
 
@@ -13,6 +15,8 @@ export interface ResourceStatus {
     refresh?: number;
     ready: boolean;
     contentLength: number;
+    cachePath?: string;
+    restoredFromCache: boolean;
     lastSuccessAt?: string;
     lastErrorAt?: string;
     lastError?: string;
@@ -31,11 +35,28 @@ function ResourceLabel(upstream: Upstream) {
     return `${upstream.name} format=${upstream.format} source=${upstream.source}`;
 }
 
+function OneTimeCachePath(upstream: Upstream) {
+    if (upstream.refresh || upstream.source === UpstreamSource.Local) return undefined;
+
+    const key = JSON.stringify({
+        name: upstream.name,
+        source: upstream.source,
+        from: upstream.from,
+        format: upstream.format,
+        encoding: upstream.encoding,
+        nodeTemplatePath: upstream.nodeTemplatePath,
+    });
+    const hash = createHash("sha256").update(key).digest("hex").slice(0, 16);
+    return join(process.cwd(), ".cache", "resources", `${hash}.txt`);
+}
+
 export class Resource {
     content: string = "";
     private timer: NodeJS.Timeout | undefined = undefined;
     private stopped = false;
     private readyResolved = false;
+    private restoredFromCache = false;
+    private cachePath: string | undefined = undefined;
     private readyResolve: (() => void) | undefined = undefined;
     private readyReject: ((error: unknown) => void) | undefined = undefined;
     private lastSuccessAt: Date | undefined = undefined;
@@ -50,6 +71,7 @@ export class Resource {
             this.readyResolve = resolve;
             this.readyReject = reject;
         });
+        this.cachePath = OneTimeCachePath(this.upstream);
 
         if (this.upstream.refresh) {
             void this.refreshLoop(true);
@@ -97,9 +119,11 @@ export class Resource {
             format: this.upstream.format,
             ready: this.readyResolved,
             contentLength: this.content.length,
+            restoredFromCache: this.restoredFromCache,
             failureCount: this.failureCount,
         };
 
+        if (this.cachePath !== undefined) status.cachePath = this.cachePath;
         if (this.upstream.nodeTemplatePath !== undefined) status.nodeTemplatePath = this.upstream.nodeTemplatePath;
         if (this.upstream.refresh !== undefined) status.refresh = this.upstream.refresh;
         if (this.lastSuccessAt) status.lastSuccessAt = this.lastSuccessAt.toISOString();
@@ -109,17 +133,43 @@ export class Resource {
         return status;
     }
 
-    private markSuccess(content: string) {
+    private markReady(content: string) {
         this.content = content;
-        this.lastSuccessAt = new Date();
-        this.lastError = undefined;
-        this.failureCount = 0;
-        console.info(`[resource] fetched ${ResourceLabel(this.upstream)} bytes=${content.length}`);
-
         if (!this.readyResolved) {
             this.readyResolved = true;
             this.readyResolve?.();
         }
+    }
+
+    private markSuccess(content: string) {
+        this.markReady(content);
+        this.restoredFromCache = false;
+        this.lastSuccessAt = new Date();
+        this.lastError = undefined;
+        this.failureCount = 0;
+        console.info(`[resource] fetched ${ResourceLabel(this.upstream)} bytes=${content.length}`);
+    }
+
+    private async loadCache() {
+        if (!this.cachePath) return false;
+
+        try {
+            const content = await readFile(this.cachePath, { encoding: 'utf-8' });
+            this.markReady(content);
+            this.restoredFromCache = true;
+            console.info(`[resource] restored cache ${ResourceLabel(this.upstream)} path=${this.cachePath} bytes=${content.length}`);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private async persistCache(content: string) {
+        if (!this.cachePath) return;
+
+        await mkdir(dirname(this.cachePath), { recursive: true });
+        await writeFile(this.cachePath, content, { encoding: 'utf-8' });
+        console.info(`[resource] persisted cache ${ResourceLabel(this.upstream)} path=${this.cachePath} bytes=${content.length}`);
     }
 
     private markFailure(error: unknown) {
@@ -150,6 +200,7 @@ export class Resource {
                 console.info(`[resource] fetching ${ResourceLabel(this.upstream)} attempt=${attempt + 1}`);
                 const content = await this[this.upstream.source]();
                 this.markSuccess(content);
+                await this.persistCache(content);
                 return content;
             } catch (error) {
                 this.markFailure(error);
@@ -162,10 +213,12 @@ export class Resource {
     }
 
     private async oneTimeFetch() {
+        const hasCache = await this.loadCache();
+
         try {
             await this.fetchWithRetry();
         } catch (error) {
-            this.readyReject?.(error);
+            if (!hasCache) this.readyReject?.(error);
         }
     }
 

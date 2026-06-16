@@ -189,6 +189,8 @@ function formatStatus(resource) {
     `content=${resource.contentLength ?? 0}`,
     `failures=${resource.failureCount ?? 0}`,
   ];
+  if (resource.restoredFromCache) parts.push('restored-from-cache');
+  if (resource.cachePath) parts.push(`cache=${resource.cachePath}`);
   if (resource.lastSuccessAt) parts.push(`success=${new Date(resource.lastSuccessAt).toLocaleString()}`);
   if (resource.lastError) parts.push(`error=${resource.lastError}`);
   return parts.join(' | ');
