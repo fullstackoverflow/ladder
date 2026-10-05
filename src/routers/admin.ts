@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { validate } from 'typia';
 import { GetConfig, GetConfigPath, SaveConfig } from '../services/config';
-import { GetResourceManager } from '../services/resource';
+import { GetResourceManager, GetRuleManager, GetTemplateData, ResourceManager } from '../services/resource';
 import { Render } from '../services/template';
 import { Config } from '../util/type';
 
@@ -27,7 +27,6 @@ async function ReadJson<T>(ctx: any): Promise<T> {
 
 async function ReadStaticFile(name: string) {
   const candidates = [
-    join(process.cwd(), 'src', 'static', name),
     join(process.cwd(), 'dist', 'static', name),
     join(__dirname, '..', 'static', name),
   ];
@@ -35,7 +34,7 @@ async function ReadStaticFile(name: string) {
   let lastError: unknown;
   for (const path of candidates) {
     try {
-      return await readFile(path, { encoding: 'utf8' });
+      return await readFile(path);
     } catch (error) {
       lastError = error;
     }
@@ -92,7 +91,10 @@ async function AdminState(config = GetConfig()) {
     config,
     templates,
     nodeTemplates,
+    localFiles: await Promise.all([...(config.upstreams ?? []), ...(config.rules ?? [])]
+      .filter(source => source.source === 'local').map(source => ReadOptionalFile(source.from))),
     resources: GetResourceManager().Status(),
+    ruleResources: GetRuleManager().Status(),
   };
 }
 
@@ -106,6 +108,8 @@ function ValidateConfig(config: Config) {
 function AllowedFilePaths(config = GetConfig()) {
   return new Set([
     ...(config.templates ?? []).map((template) => template.path),
+    ...[...(config.upstreams ?? []), ...(config.rules ?? [])]
+      .filter(source => source.source === 'local').map(source => source.from),
     ...(config.upstreams ?? [])
       .map((upstream) => upstream.nodeTemplatePath)
       .filter((path): path is string => Boolean(path)),
@@ -117,8 +121,23 @@ async function RenderPreview(target: string, config: Config, files: Record<strin
   if (!outputTemplate) throw new Error(`template not found for target:${target}`);
 
   const template = files[outputTemplate.path] ?? await readFile(outputTemplate.path, { encoding: 'utf8' });
-  const profiles = await GetResourceManager().Profiles();
-  return Render(template, profiles);
+  const temporary: ResourceManager[] = [];
+  try {
+    const managers = [
+      [config.upstreams, GetResourceManager()],
+      [config.rules ?? [], GetRuleManager()],
+    ] as const;
+    const [upstreams, rules] = await Promise.all(managers.map(async ([sources, current]) => {
+      if (current.Matches(sources)) return current.Profiles(files);
+      const manager = new ResourceManager();
+      temporary.push(manager);
+      manager.SetUpstreams(sources);
+      return manager.Profiles(files);
+    }));
+    return Render(template, { upstreams, rules });
+  } finally {
+    temporary.forEach(manager => manager.Clear());
+  }
 }
 
 router.get('/', async ctx => {
@@ -127,17 +146,23 @@ router.get('/', async ctx => {
 
 router.get('/admin', async ctx => {
   ctx.type = 'html';
-  ctx.body = await ReadStaticFile('admin.html');
+  ctx.set('Cache-Control', 'no-cache');
+  ctx.body = await ReadStaticFile('index.html');
 });
 
-router.get('/admin/app.css', async ctx => {
-  ctx.type = 'text/css';
-  ctx.body = await ReadStaticFile('admin.css');
-});
-
-router.get('/admin/app.js', async ctx => {
-  ctx.type = 'application/javascript';
-  ctx.body = await ReadStaticFile('admin.js');
+router.get('/admin/assets/:file', async ctx => {
+  const file = ctx.params.file;
+  if (!file || !/^[a-zA-Z0-9_.-]+\.(js|css|woff2?|svg)$/.test(file)) {
+    ctx.status = 404;
+    return;
+  }
+  try {
+    ctx.type = file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'font/woff2';
+    ctx.body = await ReadStaticFile(join('assets', file));
+    ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+  } catch {
+    ctx.status = 404;
+  }
 });
 
 router.get('/api/status', async ctx => {
@@ -145,6 +170,7 @@ router.get('/api/status', async ctx => {
     configPath: GetConfigPath(),
     templates: TemplatesWithUrls(),
     resources: GetResourceManager().Status(),
+    ruleResources: GetRuleManager().Status(),
   };
 });
 
@@ -158,6 +184,7 @@ router.put('/api/admin/config', async ctx => {
     ValidateConfig(config);
     const saved = SaveConfig(config);
     GetResourceManager().SetUpstreams(saved.upstreams ?? []);
+    GetRuleManager().SetUpstreams(saved.rules ?? []);
     ctx.body = await AdminState(saved);
   } catch (error) {
     ctx.status = 400;
@@ -175,6 +202,13 @@ router.put('/api/admin/file', async ctx => {
 
     await mkdir(dirname(body.path), { recursive: true });
     await writeFile(body.path, body.content, { encoding: 'utf8' });
+    for (const [sources, manager] of [
+      [GetConfig().upstreams, GetResourceManager()],
+      [GetConfig().rules ?? [], GetRuleManager()],
+    ] as const) {
+      await Promise.all(sources.map((source, index) =>
+        source.source === 'local' && source.from === body.path ? manager.Sync(index) : Promise.resolve()));
+    }
     ctx.body = 'ok';
   } catch (error) {
     ctx.status = 400;
@@ -234,7 +268,7 @@ router.post('/api/admin/preview/profiles/raw/:index', async ctx => {
 
 router.post('/api/admin/preview/profiles/rendered', async ctx => {
   try {
-    ctx.body = await GetResourceManager().Profiles();
+    ctx.body = await GetTemplateData();
   } catch (error) {
     ctx.status = 400;
     ctx.body = error instanceof Error ? error.message : String(error);
@@ -245,6 +279,7 @@ router.post('/api/sync', async ctx => {
   try {
     ctx.body = {
       resources: await GetResourceManager().Sync(),
+      ruleResources: await GetRuleManager().Sync(),
     };
   } catch (error) {
     ctx.status = 502;
@@ -264,6 +299,21 @@ router.post('/api/sync/:index', async ctx => {
     ctx.body = {
       resources: await GetResourceManager().Sync(index),
     };
+  } catch (error) {
+    ctx.status = 502;
+    ctx.body = error instanceof Error ? error.message : String(error);
+  }
+});
+
+router.post('/api/rules/sync/:index', async ctx => {
+  const index = Number(ctx.params.index);
+  if (!Number.isInteger(index) || index < 0) {
+    ctx.status = 400;
+    ctx.body = 'invalid rule index';
+    return;
+  }
+  try {
+    ctx.body = { ruleResources: await GetRuleManager().Sync(index) };
   } catch (error) {
     ctx.status = 502;
     ctx.body = error instanceof Error ? error.message : String(error);

@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 import { validate } from 'typia';
 import { Options } from './util/global';
 import { GetConfig, SetConfigPath } from './services/config';
-import { GetResourceManager } from './services/resource';
+import { GetResourceManager, GetRuleManager } from './services/resource';
 
 const { values } = parseArgs({
     options: {
@@ -29,11 +29,14 @@ SetConfigPath(result.data.config);
 
 const resource_manager = GetResourceManager();
 resource_manager.SetUpstreams(GetConfig()?.upstreams ?? []);
+GetRuleManager().SetUpstreams(GetConfig().rules ?? []);
 
 export const app = new Koa();
 
 app.use(router.routes());
 app.use(router.allowedMethods());
 const port = Number(result.data.port);
-app.listen(port);
-console.log(`Server is running at ${port}`);
+const server = app.listen(port, () => {
+    const address = server.address();
+    console.log(`Server is running at ${typeof address === 'object' && address ? address.port : port}`);
+});

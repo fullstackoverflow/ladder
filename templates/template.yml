@@ -115,7 +115,7 @@ dns:
 proxies: 
   {{ 
      toYaml(
-       $.map(upstream=>upstream.proxies).flat()
+       $.upstreams.map(upstream=>upstream.proxies).flat()
      ) 
   }}
 proxy-groups:
@@ -126,7 +126,7 @@ proxy-groups:
     proxies: 
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Netflix
@@ -138,7 +138,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: HBO
@@ -151,7 +151,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: DisneyPlus
@@ -163,7 +163,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: YouTube
@@ -175,7 +175,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Bahamut
@@ -187,7 +187,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Bilibili
@@ -199,7 +199,7 @@ proxy-groups:
       - Proxies
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: MyTVSuper
@@ -211,7 +211,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: AI
@@ -223,7 +223,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Telegram
@@ -235,7 +235,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Crypto
@@ -247,7 +247,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Steam
@@ -259,7 +259,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Epic
@@ -271,7 +271,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Xbox
@@ -283,7 +283,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: PlayStation
@@ -295,7 +295,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Microsoft
@@ -307,7 +307,7 @@ proxy-groups:
       - Proxies
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Scholar
@@ -319,7 +319,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Apple
@@ -331,7 +331,7 @@ proxy-groups:
       - Proxies
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Google
@@ -343,7 +343,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: Tiktok
@@ -355,7 +355,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
   - name: 🎯Direct
@@ -374,7 +374,7 @@ proxy-groups:
       - 🎯Direct
       {{
           toYaml(
-             $.map(upstream=>upstream.proxies).flat().map(node=>node.name)
+             $.upstreams.map(upstream=>upstream.proxies).flat().map(node=>node.name)
           )
       }}
 rules:

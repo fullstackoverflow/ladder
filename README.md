@@ -107,9 +107,79 @@ Fields:
 
 `type: "uri"` scans raw input for proxy URIs, or reads JSON/YAML string arrays. `type: "clash"` reads Clash YAML/JSON objects with `proxies` and strips Clash-only fields like `udp` before outputting sing-box JSON.
 
-DNS, routing rules, inbounds, and other target-specific behavior are owned by the template. Upstream parsing only contributes proxy nodes.
+DNS, inbounds, and other target-specific behavior are owned by the template.
+
+## Rule sources and template data
+
+`config.rules` is an optional ordered array of sources. Each source uses `name`,
+`source` (`local` or `URI`), `from`, and `format` (`json` or `yaml`), with the same
+optional encoding, refresh, and retry settings as upstreams. For example:
+
+```json
+"rules": [
+  { "name": "overrides", "source": "local", "from": "./rules/overrides.yaml", "format": "yaml" },
+  { "name": "provider", "source": "URI", "from": "https://example.com/rules.yaml", "format": "yaml", "refresh": 3600 }
+]
+```
+
+Output templates receive `$ = { upstreams: [...], rules: [...] }`.
+Each slot contains one file's parsed payload, preserving all fields and internal
+ordering. Rules are never extracted, flattened, normalized, deduplicated, or
+automatically inserted into the output. The Rules page's up/down buttons change
+only the source file index; template scripts decide how to use that order.
+An unavailable file fails rendering instead of shifting subsequent file indices.
+
+For a Clash template whose rule files contain a `rules` field, the script can
+explicitly combine them:
+
+```yaml
+proxies:
+  {{ toYaml($.upstreams.flatMap(source => source.proxies ?? [])) }}
+rules:
+  {{ toYaml($.rules.flatMap(source => source.rules ?? [])) }}
+```
+
+Migrate output template expressions such as `$.map(...)` to
+`$.upstreams.map(...)`. Node templates still receive their individual upstream's
+raw payload as `$`.
+
+The Files editor also includes all local upstream and rule files. Saving a local
+source reloads its resource immediately. Output preview uses file drafts without
+saving them; the `$ 数据` panel shows the current loaded data. File drafts survive
+configuration changes and rule reordering.
 
 ## Admin
+
+The admin frontend is a React + TypeScript application built with Vite. It lives
+in `frontend/`; `src/static/admin.*` has been replaced. Koa serves the built
+assets from `dist/static` at `/admin` so production still runs one server.
+
+See [frontend structure](frontend/README.md) for component, feature, hook, and
+style ownership.
+
+- Sidebar navigation for upstreams, rule sources, output templates, and files
+- Edit local upstream, rule and template file contents directly inside their cards;
+  collapsing an editor preserves its draft
+- Drag or keyboard sorting for rule files, with up/down buttons as an alternative
+- CodeMirror editors with YAML / JSON highlighting, line numbers, undo, and Ctrl / Cmd + S
+- File explorer, per-file draft state, and an optional output/data/config inspector
+- Inline source status, search, loading states, and persistent error notifications
+- Responsive layouts for smaller screens
+
+For frontend development, run `npm run dev` for the Koa server on port 4000,
+then `npm run dev:ui` in another terminal. Vite prints its frontend URL and
+proxies `/api` and `/subscribe` to Koa. `npm run build` builds both parts.
+
+Verification commands:
+
+```bash
+npm test
+npx playwright install chromium
+npm run test:ui
+```
+
+Browser tests use separate fixture files under `.cache/ui-e2e` and port 4179.
+They do not load the user's `config.json`.
 
 The admin page at `/admin` shows upstream sync status:
 

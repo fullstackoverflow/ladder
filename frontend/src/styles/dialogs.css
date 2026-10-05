@@ -1,0 +1,113 @@
+.config-dialog {
+  width: min(520px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  box-shadow: 0 25px 100px #2832502b;
+  color: #3e4960;
+  max-height: calc(100vh - 40px);
+}
+.config-dialog::backdrop {
+  background: #25304a55;
+  backdrop-filter: blur(3px);
+}
+.dialog-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28px 28px 24px;
+}
+.dialog-heading h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+.dialog-heading .eyebrow {
+  font-size: 9px;
+}
+.form-fields {
+  margin: 0;
+  padding: 0 28px 26px;
+  border: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #8490a3;
+  font-size: 11px;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.optional {
+  font-size: 9px;
+  color: #b2bbc9;
+}
+.field input,
+.field select {
+  width: 100%;
+  border: 1px solid #e1e6ee;
+  background: #fdfdff;
+  border-radius: 7px;
+  padding: 11px 12px;
+  color: #546078;
+  font-size: 12px;
+  min-width: 0;
+}
+.field input::placeholder {
+  color: #b6bfcd;
+}
+.field input:focus,
+.field select:focus {
+  border-color: #9aa9ee;
+}
+.advanced {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.advanced summary {
+  color: #8e9bb1;
+  font-size: 11px;
+  cursor: pointer;
+}
+.advanced-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-top: 20px;
+}
+.dialog-footer {
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  background: #fafbfe;
+}
+.inline-error {
+  color: #c7756c;
+  font-size: 11px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  padding: 0 28px 20px;
+  overflow-wrap: anywhere;
+}
+.delete-confirm {
+  background: #fff6f4;
+  margin: 0 28px 20px;
+  padding: 16px;
+  border-radius: 8px;
+}
+.delete-confirm p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #ba807a;
+  margin-bottom: 12px;
+}
+.delete-confirm .button {
+  margin-right: 8px;
+}

@@ -19,10 +19,10 @@ function Decode(content: string, encoding?: UpstreamEncoding): string {
     }
 }
 
-async function RenderTemplatePayload(payload: unknown, nodeTemplatePath: string | undefined) {
+async function RenderTemplatePayload(payload: unknown, nodeTemplatePath: string | undefined, files: Record<string, string>) {
     if (!nodeTemplatePath) return payload;
 
-    const template = await readFile(nodeTemplatePath, { encoding: 'utf8' });
+    const template = files[nodeTemplatePath] ?? await readFile(nodeTemplatePath, { encoding: 'utf8' });
     const rendered = Render(template, payload as Record<string, any>);
     console.info(`[parse] applied node template path=${nodeTemplatePath}`);
     return rendered;
@@ -52,10 +52,10 @@ export function ParseRawProfile(content: string, format: UpstreamFormat, encodin
     return ParseTemplateInput(decoded, format);
 }
 
-export async function ParseProfile(content: string, format: UpstreamFormat, encoding: UpstreamEncoding | undefined, nodeTemplatePath?: string): Promise<any> {
+export async function ParseProfile(content: string, format: UpstreamFormat, encoding: UpstreamEncoding | undefined, nodeTemplatePath?: string, files: Record<string, string> = {}): Promise<any> {
     let payload = ParseRawProfile(content, format, encoding);
     if (nodeTemplatePath) {
-        payload = await RenderTemplatePayload(payload, nodeTemplatePath);
+        payload = await RenderTemplatePayload(payload, nodeTemplatePath, files);
     }
     return payload;
 }

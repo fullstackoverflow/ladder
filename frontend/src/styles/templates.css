@@ -1,0 +1,62 @@
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(265px, 1fr));
+  gap: 18px;
+}
+.template-card {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.template-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.target-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: #6880dd;
+  background: #f0f3fe;
+  border-radius: 12px;
+}
+.target-icon.singbox {
+  color: #aa88c8;
+  background: #f7f1fd;
+}
+.tag {
+  font-size: 10px;
+  padding: 4px 8px;
+  border: 1px solid #e7ebf1;
+  border-radius: 5px;
+  color: #8a95a8;
+}
+.template-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.subscription-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px;
+  margin: 25px 0 18px;
+  border: 1px dashed #dce2ef;
+  border-radius: 7px;
+  background: #fafbfe;
+  color: #8b97ad;
+  font-size: 11px;
+}
+.template-card-actions {
+  display: flex;
+  gap: 10px;
+}
+.template-card-actions .button:first-child {
+  flex: 1;
+}

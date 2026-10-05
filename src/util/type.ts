@@ -79,4 +79,10 @@ export interface Upstream {
 export interface Config {
     templates: Array<OutputTemplate>,
     upstreams: Array<Upstream>
+    rules?: Array<RuleSource>
+}
+
+/** Ordered files; each parsed payload occupies one slot in $.rules. */
+export interface RuleSource extends Omit<Upstream, 'format' | 'nodeTemplatePath'> {
+    format: UpstreamFormat.JSON | UpstreamFormat.Yaml
 }

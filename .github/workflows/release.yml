@@ -49,7 +49,7 @@ jobs:
         run: |
           tar -czf ladder-${GITHUB_REF_NAME}.tar.gz \
             Dockerfile docker-compose.yml .dockerignore package.json package-lock.json \
-            tsconfig.json src template.json
+            tsconfig.json src frontend scripts playwright.config.ts template.json templates config.example.json README.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

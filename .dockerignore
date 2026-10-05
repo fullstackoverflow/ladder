@@ -8,3 +8,4 @@ docker-compose*.yml
 config.json
 sample
 out.json
+.cache

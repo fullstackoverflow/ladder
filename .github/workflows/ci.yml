@@ -23,5 +23,11 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      - name: Build and test
+        run: npm test
+
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Test admin UI
+        run: npx playwright test

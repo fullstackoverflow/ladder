@@ -17,9 +17,9 @@
       "name": "demo-uri-list",
       "source": "local",
       "from": "./sample/demo-uri-list.txt",
-      "type": "uri",
-      "format": "raw",
+      "format": "node-list",
       "refresh": 300
     }
-  ]
+  ],
+  "rules": []
 }

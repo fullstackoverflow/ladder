@@ -1,5 +1,5 @@
 import Router from '@koa/router';
-import { GetResourceManager } from '../services/resource';
+import { GetTemplateData } from '../services/resource';
 import { GetConfig } from '../services/config';
 import { readFile } from 'fs/promises';
 import { Render } from '../services/template';
@@ -20,7 +20,7 @@ router.get('/subscribe/:target', async ctx => {
     return;
   }
   const template = await readFile(output_template.path, 'utf-8');
-  const profiles = await GetResourceManager().Profiles();
+  const profiles = await GetTemplateData();
   const rendered = Render(template, profiles);
   ctx.body = rendered;
 });

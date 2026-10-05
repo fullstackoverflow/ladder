@@ -100,6 +100,15 @@ export class Resource {
         return this.readyResolved;
     }
 
+    async profile(files: Record<string, string> = {}) {
+        const draft = this.upstream.source === UpstreamSource.Local ? files[this.upstream.from] : undefined;
+        if (draft === undefined) {
+            await this.ready;
+            if (!this.isReady) throw new Error(`Resource is not ready: ${this.name}`);
+        }
+        return ParseProfile(draft ?? this.content, this.format, this.encoding, this.nodeTemplatePath, files);
+    }
+
     stop() {
         this.stopped = true;
         if (this.timer) clearTimeout(this.timer);
@@ -252,9 +261,15 @@ export class Resource {
 
 export class ResourceManager {
     private pool: Array<Resource> = [];
+    private definitions: Upstream[] = [];
+
+    Matches(upstreams: Upstream[]) {
+        return JSON.stringify(this.definitions) === JSON.stringify(upstreams);
+    }
 
     SetUpstreams(upstreams: Upstream[]) {
         this.Clear();
+        this.definitions = upstreams;
         upstreams.forEach((upstream) => this.AddResource(new Resource(upstream)));
     }
 
@@ -266,6 +281,7 @@ export class ResourceManager {
     Clear() {
         this.pool.forEach((resource) => resource.stop());
         this.pool = [];
+        this.definitions = [];
     }
 
     Status() {
@@ -290,12 +306,8 @@ export class ResourceManager {
         return this.Status();
     }
 
-    async Profiles(): Promise<any[]> {
-        return (await Promise.all(this.pool.map(async resource => {
-            await resource.ready.catch(() => undefined);
-            if (!resource.isReady) return undefined;
-            return ParseProfile(resource.content, resource.format, resource.encoding, resource.nodeTemplatePath);
-        }))).filter(Boolean);
+    async Profiles(files: Record<string, string> = {}): Promise<any[]> {
+        return Promise.all(this.pool.map(resource => resource.profile(files)));
     }
 
     async RawProfiles(): Promise<any[]> {
@@ -316,6 +328,18 @@ export class ResourceManager {
 }
 
 const resource_manager = new ResourceManager();
+const rule_manager = new ResourceManager();
+
+export function GetRuleManager() {
+    return rule_manager;
+}
+
+export async function GetTemplateData(files: Record<string, string> = {}) {
+    const [upstreams, rules] = await Promise.all([
+        resource_manager.Profiles(files), rule_manager.Profiles(files),
+    ]);
+    return { upstreams, rules };
+}
 
 export function GetResourceManager() {
     return resource_manager;
