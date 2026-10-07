@@ -33,7 +33,12 @@ export function ConfigDialog({
       : '上游';
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const next = readConfigForm(data, new FormData(event.currentTarget));
+    const form = new FormData(event.currentTarget);
+    if (form.getAll('managedFilePending').includes('true')) {
+      setError('请等待文件读取或创建完成后再保存配置');
+      return;
+    }
+    const next = readConfigForm(data, form);
     try {
       await onSave(next);
     } catch (error) {

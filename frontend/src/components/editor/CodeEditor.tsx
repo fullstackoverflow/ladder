@@ -17,6 +17,7 @@ import {
 import { json } from '@codemirror/lang-json';
 import { yaml } from '@codemirror/lang-yaml';
 import { javascript } from '@codemirror/lang-javascript';
+import { search, searchKeymap, openSearchPanel } from '@codemirror/search';
 import {
   defaultHighlightStyle,
   syntaxHighlighting,
@@ -30,12 +31,14 @@ export function CodeEditor({
   onChange,
   onSave,
   readOnly = false,
+  searchRequest = 0,
 }: {
   value: string;
   path: string;
   onChange?: (value: string) => void;
   onSave?: () => void;
   readOnly?: boolean;
+  searchRequest?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -59,6 +62,20 @@ export function CodeEditor({
         extensions: [
           lineNumbers(),
           history(),
+          search({ top: true }),
+          EditorState.phrases.of({
+            Find: '查找',
+            Replace: '替换为',
+            next: '下一个',
+            previous: '上一个',
+            all: '选中全部',
+            'match case': '区分大小写',
+            regexp: '正则表达式',
+            'by word': '全词匹配',
+            replace: '替换',
+            'replace all': '全部替换',
+            close: '关闭',
+          }),
           drawSelection(),
           highlightActiveLine(),
           highlightActiveLineGutter(),
@@ -78,6 +95,8 @@ export function CodeEditor({
               },
             },
             indentWithTab,
+            { key: 'Mod-h', run: openSearchPanel },
+            ...searchKeymap,
             ...defaultKeymap,
             ...historyKeymap,
           ]),
@@ -122,6 +141,9 @@ export function CodeEditor({
         changes: { from: 0, to: editor.state.doc.length, insert: value },
       });
   }, [value]);
+  useEffect(() => {
+    if (searchRequest > 0 && view.current) openSearchPanel(view.current);
+  }, [searchRequest]);
   return (
     <div
       className="code-editor"

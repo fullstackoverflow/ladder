@@ -5,16 +5,22 @@ const { spawn } = require('node:child_process');
 const root = resolve(__dirname, '..');
 const dir = join(root, '.cache', 'ui-e2e');
 mkdirSync(dir, { recursive: true });
+const dataDir = join(dir, 'data');
+mkdirSync(dataDir, { recursive: true });
 const source = (name, filename, format = 'json') => ({
   name,
   source: 'local',
-  from: join(dir, filename),
+  from: join(dataDir, filename),
   format,
   retry: 0,
 });
 const config = {
   templates: [
-    { name: 'Clash 主配置', target: 'clash', path: join(dir, 'clash.yaml') },
+    {
+      name: 'Clash 主配置',
+      target: 'clash',
+      path: join(dataDir, 'clash.yaml'),
+    },
   ],
   upstreams: [source('本地节点', 'nodes.json')],
   rules: [
@@ -23,16 +29,16 @@ const config = {
   ],
 };
 writeFileSync(
-  join(dir, 'nodes.json'),
+  join(dataDir, 'nodes.json'),
   JSON.stringify({ proxies: [{ name: 'Demo node' }] }, null, 2),
 );
 writeFileSync(
-  join(dir, 'overrides.json'),
+  join(dataDir, 'overrides.json'),
   JSON.stringify({ rules: ['DOMAIN,example.com,DIRECT'] }, null, 2),
 );
-writeFileSync(join(dir, 'common.yaml'), 'rules:\n  - MATCH,Proxy\n');
+writeFileSync(join(dataDir, 'common.yaml'), 'rules:\n  - MATCH,Proxy\n');
 writeFileSync(
-  join(dir, 'clash.yaml'),
+  join(dataDir, 'clash.yaml'),
   'proxies:\n  {{ toYaml($.upstreams.flatMap(source => source.proxies)) }}\nrules:\n  {{ toYaml($.rules.flatMap(source => source.rules)) }}\n',
 );
 writeFileSync(join(dir, 'config.json'), JSON.stringify(config, null, 2));

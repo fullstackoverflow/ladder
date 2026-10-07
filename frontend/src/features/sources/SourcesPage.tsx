@@ -8,14 +8,14 @@ import { useWorkspaceContext } from '../../app/WorkspaceProvider';
 import { Empty } from '../../components/EmptyState';
 import { AddButton } from '../../components/AddButton';
 import { SourceCard } from './SourceCard';
-import { useRuleSorting } from './useRuleSorting';
+import { useSourceSorting } from './useSourceSorting';
 import { useState } from 'react';
 import { InlineFileEditor } from '../files/InlineFileEditor';
 
 export function SourcesPage({ kind }: { kind: 'upstreams' | 'rules' }) {
   const { data, busy, search, openDialog, openFile, run, sync } =
     useWorkspaceContext();
-  const { sensors, dragEnd, reorder } = useRuleSorting();
+  const { sensors, dragEnd, reorder } = useSourceSorting(kind);
   const [editing, setEditing] = useState<{
     owner: string;
     path: string;
@@ -38,7 +38,7 @@ export function SourcesPage({ kind }: { kind: 'upstreams' | 'rules' }) {
         onDragEnd={dragEnd}
       >
         <SortableContext
-          items={sources.map((_, index) => 'rule-' + index)}
+          items={sources.map((_, index) => `${kind}-${index}`)}
           strategy={verticalListSortingStrategy}
         >
           <div className="source-list">
@@ -91,7 +91,7 @@ export function SourcesPage({ kind }: { kind: 'upstreams' | 'rules' }) {
             <Server size={16} />
             <p>
               当前来源均为远程
-              URL。只有本地文件来源支持编辑文件内容；新增来源时选择“本地文件”，填写文件路径后，卡片上会显示“编辑文件内容”按钮。
+              URL。只有本地文件来源支持编辑文件内容；新增来源时选择“本地文件”，从文件库选择、创建或上传文件后，卡片上会显示“编辑文件内容”按钮。
             </p>
           </div>
         )}
@@ -109,7 +109,7 @@ export function SourcesPage({ kind }: { kind: 'upstreams' | 'rules' }) {
           action={<AddButton kind={kind} />}
         />
       )}
-      {kind === 'rules' && sources.length > 0 && (
+      {sources.length > 0 && (
         <div className="hint">
           <ListOrdered size={16} />
           <p>

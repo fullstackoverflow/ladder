@@ -6,6 +6,7 @@ import { GetConfig, GetConfigPath, SaveConfig } from '../services/config';
 import { GetResourceManager, GetRuleManager, GetTemplateData, ResourceManager } from '../services/resource';
 import { Render } from '../services/template';
 import { Config } from '../util/type';
+import { CreateDataFile, ListDataFiles } from '../services/data';
 
 const router = new Router();
 
@@ -176,6 +177,20 @@ router.get('/api/status', async ctx => {
 
 router.get('/api/admin/state', async ctx => {
   ctx.body = await AdminState();
+});
+
+router.get('/api/admin/files', async ctx => {
+  ctx.body = await ListDataFiles();
+});
+
+router.post('/api/admin/files', async ctx => {
+  try {
+    const body = await ReadJson<{ name: string; content: string }>(ctx);
+    ctx.body = await CreateDataFile(body.name, body.content);
+  } catch (error) {
+    ctx.status = 400;
+    ctx.body = error instanceof Error ? error.message : String(error);
+  }
 });
 
 router.put('/api/admin/config', async ctx => {

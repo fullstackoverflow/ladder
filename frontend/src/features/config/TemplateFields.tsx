@@ -1,4 +1,5 @@
 import type { Template } from '../../types/workspace';
+import { ManagedFileField } from './ManagedFileField';
 export function TemplateFields({ value }: { value: Template }) {
   return (
     <>
@@ -9,15 +10,13 @@ export function TemplateFields({ value }: { value: Template }) {
           <option value="singbox">sing-box</option>
         </select>
       </label>
-      <label className="field wide">
-        模板文件路径
-        <input
-          name="path"
-          defaultValue={value.path}
-          required
-          placeholder="./templates/clash.yaml"
-        />
-      </label>
+      <ManagedFileField
+        name="path"
+        label="模板文件"
+        value={value.path}
+        defaultName="template.yaml"
+        defaultContent="{}\n"
+      />
     </>
   );
 }

@@ -43,8 +43,8 @@ export function SourceCard({
   children?: ReactNode;
 }) {
   const sortable = useSortable({
-    id: `rule-${index}`,
-    disabled: kind !== 'rules' || busy || orderDisabled,
+    id: `${kind}-${index}`,
+    disabled: busy || orderDisabled,
   });
   const local = source.source === 'local';
   return (
@@ -56,23 +56,21 @@ export function SourceCard({
       }}
       className={`source-card ${sortable.isDragging ? 'dragging' : ''} ${children ? 'expanded' : ''}`}
     >
-      {kind === 'rules' && (
-        <div className="rule-order">
-          <button
-            ref={sortable.setActivatorNodeRef}
-            {...sortable.attributes}
-            {...sortable.listeners}
-            disabled={busy || orderDisabled}
-            className="drag-handle"
-            aria-label={`拖动 ${source.name} 调整顺序`}
-          >
-            <GripVertical size={18} />
-          </button>
-          <span className="index-number">
-            {String(index + 1).padStart(2, '0')}
-          </span>
-        </div>
-      )}
+      <div className="rule-order">
+        <button
+          ref={sortable.setActivatorNodeRef}
+          {...sortable.attributes}
+          {...sortable.listeners}
+          disabled={busy || orderDisabled}
+          className="drag-handle"
+          aria-label={`拖动 ${source.name} 调整顺序`}
+        >
+          <GripVertical size={18} />
+        </button>
+        <span className="index-number">
+          {String(index + 1).padStart(2, '0')}
+        </span>
+      </div>
       <div className={`source-icon ${local ? 'local' : ''}`}>
         {local ? <HardDrive size={20} /> : <Globe2 size={20} />}
       </div>
@@ -87,7 +85,9 @@ export function SourceCard({
         <div className="source-meta">
           <span>{local ? '本地文件' : '远程订阅'}</span>
           <span>{source.format.toUpperCase()}</span>
-          {kind === 'rules' && <code>$.rules[{index}]</code>}
+          <code>
+            $.{kind}[{index}]
+          </code>
           {source.refresh && <span>每 {source.refresh} 秒刷新</span>}
           {resource?.lastSuccessAt && (
             <span>
@@ -112,28 +112,26 @@ export function SourceCard({
         )}
       </div>
       <div className="source-actions">
-        {kind === 'rules' && (
-          <div className="order-buttons">
-            <button
-              className="icon-button"
-              title="上移"
-              aria-label={`上移 ${source.name}`}
-              disabled={busy || orderDisabled || index === 0}
-              onClick={() => onMove(-1)}
-            >
-              <ArrowUp size={14} />
-            </button>
-            <button
-              className="icon-button"
-              title="下移"
-              aria-label={`下移 ${source.name}`}
-              disabled={busy || orderDisabled || index === count - 1}
-              onClick={() => onMove(1)}
-            >
-              <ArrowDown size={14} />
-            </button>
-          </div>
-        )}
+        <div className="order-buttons">
+          <button
+            className="icon-button"
+            title="上移"
+            aria-label={`上移 ${source.name}`}
+            disabled={busy || orderDisabled || index === 0}
+            onClick={() => onMove(-1)}
+          >
+            <ArrowUp size={14} />
+          </button>
+          <button
+            className="icon-button"
+            title="下移"
+            aria-label={`下移 ${source.name}`}
+            disabled={busy || orderDisabled || index === count - 1}
+            onClick={() => onMove(1)}
+          >
+            <ArrowDown size={14} />
+          </button>
+        </div>
         {local && (
           <button
             className="button compact"

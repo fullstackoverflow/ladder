@@ -1,4 +1,13 @@
-import { Braces, Check, FileCode2, LoaderCircle, Save, X } from 'lucide-react';
+import {
+  Braces,
+  Check,
+  FileCode2,
+  LoaderCircle,
+  Save,
+  Search,
+  X,
+} from 'lucide-react';
+import { useState } from 'react';
 import { useWorkspaceContext } from '../../app/WorkspaceProvider';
 import { Editor } from '../../components/editor/Editor';
 import { useRawProfile } from './useRawProfile';
@@ -11,6 +20,7 @@ export function FileEditorPanel({
   setRawOpen: (open: boolean) => void;
   path?: string;
 }) {
+  const [searchRequest, setSearchRequest] = useState(0);
   const {
     metaFiles,
     selectedFile: workspaceFile,
@@ -44,6 +54,14 @@ export function FileEditorPanel({
           )}
         </div>
         <div className="editor-actions">
+          <button
+            className="button compact"
+            title="查找 / 替换（Ctrl / ⌘ + F 或 H）"
+            onClick={() => setSearchRequest((request) => request + 1)}
+          >
+            <Search size={14} />
+            查找 / 替换
+          </button>
           {fileMeta?.nodeIndex !== undefined && (
             <button
               className="button compact"
@@ -71,6 +89,7 @@ export function FileEditorPanel({
       </div>
       <div className="editor-path">{selectedFile}</div>
       <Editor
+        searchRequest={searchRequest}
         path={selectedFile}
         value={files[selectedFile] ?? ''}
         onChange={(content) =>

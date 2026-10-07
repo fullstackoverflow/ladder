@@ -32,6 +32,10 @@ Use the demo config:
 
 ```bash
 Copy-Item config.example.json config.json
+New-Item -ItemType Directory -Force data
+Copy-Item template.json data/template.json
+Copy-Item templates/template.yml data/template.yml
+Copy-Item sample/demo-uri-list.txt data/demo-uri-list.txt
 npm run dev
 ```
 
@@ -54,7 +58,7 @@ Admin page:
 http://127.0.0.1:4000/admin
 ```
 
-The demo config uses `sample/demo-uri-list.txt`, so it works without a real subscription URL.
+The demo setup copies `sample/demo-uri-list.txt` into the file library, so it works without a real subscription URL.
 
 ## Config
 
@@ -67,19 +71,19 @@ Example:
     {
       "name": "singbox",
       "target": "singbox",
-      "path": "./template.json"
+      "path": "./data/template.json"
     },
     {
       "name": "clash",
       "target": "clash",
-      "path": "./templates/clash.yaml"
+      "path": "./data/template.yml"
     }
   ],
   "upstreams": [
     {
       "name": "demo-uri-list",
       "source": "local",
-      "from": "./sample/demo-uri-list.txt",
+      "from": "./data/demo-uri-list.txt",
       "type": "uri",
       "format": "raw",
       "refresh": 300,
@@ -117,7 +121,7 @@ optional encoding, refresh, and retry settings as upstreams. For example:
 
 ```json
 "rules": [
-  { "name": "overrides", "source": "local", "from": "./rules/overrides.yaml", "format": "yaml" },
+  { "name": "overrides", "source": "local", "from": "./data/overrides.yaml", "format": "yaml" },
   { "name": "provider", "source": "URI", "from": "https://example.com/rules.yaml", "format": "yaml", "refresh": 3600 }
 ]
 ```
@@ -158,13 +162,23 @@ See [frontend structure](frontend/README.md) for component, feature, hook, and
 style ownership.
 
 - Sidebar navigation for upstreams, rule sources, output templates, and files
+- Choose, create or upload local sources and templates in the server-managed file library,
+  without entering filesystem paths
 - Edit local upstream, rule and template file contents directly inside their cards;
   collapsing an editor preserves its draft
-- Drag or keyboard sorting for rule files, with up/down buttons as an alternative
+- Drag or keyboard sorting for upstream and rule files, with up/down buttons as an alternative
 - CodeMirror editors with YAML / JSON highlighting, line numbers, undo, and Ctrl / Cmd + S
+- Find and replace with Ctrl / Cmd + F or H, including replace all, regular expressions,
+  case sensitivity and whole-word matching
 - File explorer, per-file draft state, and an optional output/data/config inspector
 - Inline source status, search, loading states, and persistent error notifications
 - Responsive layouts for smaller screens
+
+The file library lives in `data/` beside the active configuration file. Move existing
+local files there manually, or upload them through the settings dialog, then select
+them from the library. Creating a file never overwrites an existing file, and removing a configuration reference
+keeps the file for reuse. Back up `config.json` and `data/` together. The included
+Docker Compose configuration mounts `./data` into `/app/data` for persistence.
 
 For frontend development, run `npm run dev` for the Koa server on port 4000,
 then `npm run dev:ui` in another terminal. Vite prints its frontend URL and

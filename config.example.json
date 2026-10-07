@@ -4,19 +4,19 @@
     {
       "name": "singbox",
       "target": "singbox",
-      "path": "./template.json"
+      "path": "./data/template.json"
     },
     {
       "name": "clash",
       "target": "clash",
-      "path": "./templates/template.yml"
+      "path": "./data/template.yml"
     }
   ],
   "upstreams": [
     {
       "name": "demo-uri-list",
       "source": "local",
-      "from": "./sample/demo-uri-list.txt",
+      "from": "./data/demo-uri-list.txt",
       "format": "node-list",
       "refresh": 300
     }

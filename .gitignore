@@ -2,6 +2,7 @@ node_modules
 dist
 config.json
 .cache
+data/
 sample/*
 !.gitkeep
 !sample/demo-uri-list.txt

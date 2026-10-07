@@ -1,5 +1,203 @@
 import { test, expect } from '@playwright/test';
 
+test('managed files can be created, selected, edited and reused without entering paths', async ({
+  page,
+}) => {
+  const original = await (await page.request.get('/api/admin/state')).json();
+  const filename = `new-upstream-${Date.now()}.json`;
+  try {
+    await page.goto('/admin');
+    await page.getByRole('button', { name: '新增上游', exact: true }).click();
+    await page.getByLabel('名称', { exact: true }).fill('文件库上游');
+    await page
+      .getByRole('combobox', { name: '来源', exact: true })
+      .selectOption('local');
+    await page
+      .getByRole('combobox', { name: '内容格式', exact: true })
+      .selectOption('json');
+    const field = page
+      .locator('.managed-file-field')
+      .filter({
+        has: page.getByRole('combobox', { name: '本地文件', exact: true }),
+      });
+    await field.getByRole('button', { name: '新建 / 上传文件' }).click();
+    await field.getByLabel('文件名', { exact: true }).fill(filename);
+    await field
+      .getByLabel('初始文件内容')
+      .fill('{"proxies":[{"name":"Managed node"}]}');
+    await field.getByRole('button', { name: '创建文件并选用' }).click();
+    await expect(field.getByRole('combobox')).toHaveValue(
+      new RegExp(filename.replaceAll('.', '\\.')),
+    );
+    await expect(page.getByLabel('文件路径', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: '保存配置', exact: true }).click();
+    const card = page
+      .locator('.source-card')
+      .filter({ has: page.getByRole('heading', { name: '文件库上游' }) });
+    await card
+      .getByRole('button', { name: '编辑文件内容', exact: true })
+      .click();
+    await expect(card.locator('.cm-content')).toContainText('Managed node');
+    await card
+      .locator('.cm-content')
+      .fill('{"proxies":[{"name":"Edited managed node"}]}');
+    await card.getByRole('button', { name: '保存', exact: true }).click();
+    await expect(page.locator('.toast')).toContainText('文件已保存');
+    const profiles = await (
+      await page.request.post('/api/admin/preview/profiles/rendered')
+    ).json();
+    expect(profiles.upstreams.at(-1).proxies[0].name).toBe(
+      'Edited managed node',
+    );
+    await card.getByRole('button', { name: '编辑 文件库上游 的配置' }).click();
+    await expect(
+      page.getByRole('combobox', { name: '本地文件', exact: true }),
+    ).toHaveValue(new RegExp(filename.replaceAll('.', '\\.')));
+    await page.getByRole('button', { name: '删除', exact: true }).click();
+    await page.getByRole('button', { name: '确认删除', exact: true }).click();
+    const library = await (await page.request.get('/api/admin/files')).json();
+    expect(
+      library.some((file: { name: string }) => file.name === filename),
+    ).toBe(true);
+    await page
+      .getByRole('navigation')
+      .getByRole('button', { name: /输出模板/ })
+      .click();
+    await page
+      .getByRole('button', { name: '编辑 Clash 主配置 的配置' })
+      .click();
+    await page
+      .getByRole('combobox', { name: '模板文件', exact: true })
+      .selectOption({ label: filename });
+    await page.getByRole('button', { name: '保存配置', exact: true }).click();
+    expect(await (await page.request.get('/subscribe/clash')).json()).toEqual({
+      proxies: [{ name: 'Edited managed node' }],
+    });
+  } finally {
+    await page.request.put('/api/admin/config', { data: original.config });
+  }
+});
+
+test('upstreams reorder by arrows and keyboard and preserve template array indices', async ({
+  page,
+}) => {
+  const state = await (await page.request.get('/api/admin/state')).json();
+  const second = {
+    ...state.config.upstreams[0],
+    name: '第二上游',
+    from: state.config.rules[0].from,
+  };
+  const response = await page.request.put('/api/admin/config', {
+    data: { ...state.config, upstreams: [...state.config.upstreams, second] },
+  });
+  expect(response.ok()).toBe(true);
+  try {
+    await page.goto('/admin');
+    await page
+      .getByRole('button', { name: '上移 第二上游', exact: true })
+      .click();
+    await expect(page.locator('.source-title h3').first()).toHaveText(
+      '第二上游',
+    );
+    await expect(page.locator('.source-card').first()).toContainText(
+      '$.upstreams[0]',
+    );
+    const saved = await (await page.request.get('/api/admin/state')).json();
+    expect(
+      saved.config.upstreams.map((source: { name: string }) => source.name),
+    ).toEqual(['第二上游', '本地节点']);
+    expect(saved.config.rules).toEqual(state.config.rules);
+    const data = await (
+      await page.request.post('/api/admin/preview/profiles/rendered')
+    ).json();
+    expect(data.upstreams[0].rules).toBeDefined();
+    expect(data.upstreams[1].proxies).toBeDefined();
+    await page.getByRole('textbox', { name: '搜索来源' }).fill('第二');
+    await expect(
+      page.getByRole('button', { name: '下移 第二上游' }),
+    ).toBeDisabled();
+    await page.getByRole('textbox', { name: '搜索来源' }).fill('');
+    const handle = page.getByRole('button', { name: '拖动 第二上游 调整顺序' });
+    await handle.focus();
+    await page.keyboard.press('Space');
+    await expect(handle).toHaveAttribute('aria-pressed', 'true');
+    await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    );
+    await page.keyboard.press('ArrowDown');
+    await expect
+      .poll(() =>
+        page
+          .locator('.source-card.dragging')
+          .evaluate((element) =>
+            Number(
+              getComputedStyle(element).transform.match(
+                /,\s*([\d.]+)\)$/,
+              )?.[1] ?? 0,
+            ),
+          ),
+      )
+      .toBeGreaterThan(60);
+    await page.keyboard.press('Space');
+    await expect(page.locator('.source-title h3').first()).toHaveText(
+      '本地节点',
+    );
+    await page.reload();
+    await expect(page.locator('.source-title h3').first()).toHaveText(
+      '本地节点',
+    );
+  } finally {
+    await page.request.put('/api/admin/config', { data: state.config });
+  }
+});
+
+test('file editor supports replace all, regex, undo and search shortcuts', async ({
+  page,
+}) => {
+  await page.goto('/admin');
+  await page.getByRole('button', { name: '编辑文件内容', exact: true }).click();
+  const editor = page.locator('.inline-file-editor .cm-content');
+  await editor.fill('node-1 node-2 other');
+  await page.getByRole('button', { name: '查找 / 替换', exact: true }).click();
+  const panel = page.locator('.cm-search');
+  await panel
+    .getByRole('textbox', { name: '查找', exact: true })
+    .fill('node-\\d');
+  await panel
+    .getByRole('checkbox', { name: '正则表达式', exact: true })
+    .check();
+  await panel
+    .getByRole('textbox', { name: '替换为', exact: true })
+    .fill('proxy');
+  await panel.getByRole('button', { name: '全部替换', exact: true }).click();
+  await expect(editor).toHaveText('proxy proxy other');
+  await expect(page.locator('.draft-badge')).toHaveText('未保存');
+  await panel.getByRole('button', { name: '关闭', exact: true }).click();
+  await editor.focus();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(editor).toHaveText('node-1 node-2 other');
+  await page.keyboard.press('ControlOrMeta+f');
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+  await editor.focus();
+  await page.keyboard.press('ControlOrMeta+h');
+  await expect(
+    panel.getByRole('textbox', { name: '替换为', exact: true }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
+});
+
 test('file content editing is available only for local sources', async ({
   page,
 }) => {
@@ -121,9 +319,16 @@ test('source dialog, pointer sorting, deletion, and small screens remain usable'
   await page
     .getByRole('combobox', { name: '来源', exact: true })
     .selectOption('local');
-  await page
-    .getByLabel('文件路径', { exact: true })
-    .fill('./.cache/ui-e2e/common.yaml');
+  await page.getByRole('button', { name: '新建 / 上传文件' }).click();
+  await page.getByLabel('上传文本文件').setInputFiles({
+    name: `uploaded-rules-${Date.now()}.yaml`,
+    mimeType: 'text/yaml',
+    buffer: Buffer.from('rules:\n  - MATCH,Proxy\n'),
+  });
+  await page.getByRole('button', { name: '创建文件并选用' }).click();
+  await expect(
+    page.getByRole('combobox', { name: '本地文件', exact: true }),
+  ).toHaveValue(/data.*uploaded-rules/);
   await page.getByRole('button', { name: '保存配置', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '新增规则', exact: true }),

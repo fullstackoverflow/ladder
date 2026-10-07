@@ -111,3 +111,42 @@
 .delete-confirm .button {
   margin-right: 8px;
 }
+.managed-file-field {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.managed-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.field-help {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #94a0b2;
+}
+.managed-file-create {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fafbff;
+  min-width: 0;
+}
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px;
+  font-family: Consolas, monospace;
+  color: #546078;
+}
+.managed-file-error {
+  color: #c7756c;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}

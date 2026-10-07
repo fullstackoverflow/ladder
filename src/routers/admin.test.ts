@@ -44,7 +44,7 @@ test('admin and subscription share ordered data, local editing, and draft previe
             });
             const text = await response.text();
             assert.equal(response.status, 200, text);
-            return JSON.parse(text);
+            return text === 'ok' ? text : JSON.parse(text);
         }
         const initial = await request('/api/admin/state');
         const page = await fetch(base + '/admin');
@@ -84,6 +84,25 @@ test('admin and subscription share ordered data, local editing, and draft previe
             method: 'PUT', body: JSON.stringify({ path: join(dir, 'unreferenced.json'), content: '{}' }),
         });
         assert.equal(forbidden.status, 400);
+        const managed = await request('/api/admin/files', 'POST', { name: 'managed.json', content: '{"rules":["managed"]}' });
+        assert.equal(managed.path, join(dir, 'data', 'managed.json'));
+        assert.equal(await readFile(managed.path, 'utf8'), '{"rules":["managed"]}');
+        assert.deepEqual(await request('/api/admin/files'), [managed]);
+        for (const body of [
+            { name: '../escaped.json', content: '{}' },
+            { name: '..\\escaped.json', content: '{}' },
+            { name: 'managed.json', content: 'overwrite' },
+            { name: 'private.json' },
+        ]) {
+            const invalid = await fetch(base + '/api/admin/files', { method: 'POST', body: JSON.stringify(body) });
+            assert.equal(invalid.status, 400);
+        }
+        assert.equal(await readFile(managed.path, 'utf8'), '{"rules":["managed"]}');
+        config.rules[0]!.from = managed.path;
+        await request('/api/admin/config', 'PUT', config);
+        assert.deepEqual((await request('/subscribe/clash')).rules[0], { rules: ['managed'] });
+        await request('/api/admin/file', 'PUT', { path: managed.path, content: '{"rules":["edited"]}' });
+        assert.deepEqual((await request('/subscribe/clash')).rules[0], { rules: ['edited'] });
     } finally {
         if (child && child.exitCode === null) {
             const exited = once(child, 'exit');

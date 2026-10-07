@@ -12,7 +12,7 @@ export const views: {
     label: '上游',
     icon: Server,
     heading: '管理你的节点来源',
-    subtitle: '管理节点来源，本地上游文件可直接在卡片中展开编辑。',
+    subtitle: '本地上游文件可直接编辑；拖拽调整 $.upstreams 中的文件 index。',
   },
   {
     id: 'rules',
