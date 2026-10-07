@@ -10,7 +10,7 @@ export function readConfigForm(
     next = {
       ...data.value,
       name: string('name'),
-      target: string('target') as Template['target'],
+      target: 'clash',
       path: string('path'),
     };
   else {

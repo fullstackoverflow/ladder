@@ -1,11 +1,5 @@
 {
-  "template": "./template.json",
   "templates": [
-    {
-      "name": "singbox",
-      "target": "singbox",
-      "path": "./data/template.json"
-    },
     {
       "name": "clash",
       "target": "clash",
@@ -14,10 +8,10 @@
   ],
   "upstreams": [
     {
-      "name": "demo-uri-list",
+      "name": "demo-clash",
       "source": "local",
-      "from": "./data/demo-uri-list.txt",
-      "format": "node-list",
+      "from": "./data/demo-clash.yaml",
+      "format": "yaml",
       "refresh": 300
     }
   ],

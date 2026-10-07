@@ -11,7 +11,6 @@ export type FilePath = tags.TagBase<{
 export type AnyObject = Record<string, any>;
 
 export enum OutputTarget {
-    Singbox = 'singbox',
     Clash = 'clash'
 }
 

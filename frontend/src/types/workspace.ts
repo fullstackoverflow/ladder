@@ -12,7 +12,7 @@ export interface Source {
 }
 export interface Template {
   name: string;
-  target: 'clash' | 'singbox';
+  target: 'clash';
   path: string;
 }
 export interface Config {

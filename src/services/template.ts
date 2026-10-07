@@ -1,7 +1,5 @@
 import * as vm from 'node:vm';
 import * as yaml from 'yaml';
-import { OutputTemplate } from '../util/type';
-import { BaseFile } from './file';
 
 export function Render(template: string, data: Record<string, any>): string {
     const regex = /([ \t]*)\{\{([\s\S]+?)\}\}/g;
@@ -55,18 +53,3 @@ export function Render(template: string, data: Record<string, any>): string {
         }
     });
 }
-
-export class TemplateManager {
-    constructor(private templates: Array<BaseFile> = []) {
-    }
-
-    AddTemplate(path: string) {
-        this.templates.push(new BaseFile(path));
-    }
-
-    GetTemplate(path: string) {
-        return this.templates.find(t => t.path === path);
-    }
-}
-
-export const template_manager = new TemplateManager();

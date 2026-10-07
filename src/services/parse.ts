@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { parse } from "yaml";
 import { UpstreamEncoding, UpstreamFormat } from "../util/type";
-import { NormalizeNodes, ParseURI, ParseURIs, Node } from "./node";
+import { ParseURIs } from "./node";
 import { Render } from "./template";
 
 function Decode(content: string, encoding?: UpstreamEncoding): string {

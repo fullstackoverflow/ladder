@@ -6,3 +6,4 @@ data/
 sample/*
 !.gitkeep
 !sample/demo-uri-list.txt
+!sample/demo-clash.yaml

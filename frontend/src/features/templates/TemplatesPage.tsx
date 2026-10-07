@@ -34,7 +34,7 @@ export function TemplatesPage() {
         <Empty
           icon={Layers3}
           title="创建一个输出模板"
-          description="通过模板脚本组合上游和规则，生成 Clash 或 sing-box 订阅。"
+          description="通过模板脚本组合上游和规则，生成 Clash 配置。"
           action={<AddButton kind="templates" />}
         />
       )}

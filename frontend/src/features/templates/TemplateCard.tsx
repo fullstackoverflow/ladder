@@ -31,9 +31,7 @@ export function TemplateCard({
         <span className={`target-icon ${template.target}`}>
           <Layers3 size={23} />
         </span>
-        <span className="tag">
-          {template.target === 'clash' ? 'Clash' : 'sing-box'}
-        </span>
+        <span className="tag">Clash</span>
         <span className="spacer" />
         <button
           className="icon-button"

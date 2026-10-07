@@ -61,6 +61,11 @@ test('admin and subscription share ordered data, local editing, and draft previe
         }
         assert.equal((await fetch(base + '/admin/assets/missing.js')).status, 404);
         assert.equal(initial.localFiles.length, 3);
+        assert.equal((await fetch(base + '/subscribe/singbox')).status, 404);
+        const unsupported = await fetch(base + '/api/admin/config', {
+            method: 'PUT', body: JSON.stringify({ ...config, templates: [{ ...config.templates[0], target: 'singbox' }] }),
+        });
+        assert.equal(unsupported.status, 400);
         assert.deepEqual((await request('/subscribe/clash')).rules, [{ rules: ['a'], metadata: 'preserved' }, { rules: ['b'] }]);
         config.rules.reverse();
         await request('/api/admin/config', 'PUT', config);

@@ -1,0 +1,7 @@
+proxies:
+  - name: Demo proxy
+    type: ss
+    server: proxy.example.com
+    port: 443
+    cipher: aes-128-gcm
+    password: demo-password

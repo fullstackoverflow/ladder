@@ -1,13 +1,13 @@
 # ladder
 
-Merge upstream proxy subscriptions into a sing-box config built from `template.json`.
+Render Clash configurations from upstreams, rules, and configured templates.
 
 ## Features
 
 - Parses raw URI subscriptions
-- Parses node-list subscriptions from YAML/JSON objects such as Clash `proxies`
+- Preserves complete YAML/JSON source objects such as Clash configurations
 - Supports AnyTLS and VLESS URI parsing
-- Merges parsed nodes into the sing-box template selectors and urltest groups
+- Uses template scripts to combine proxies, proxy groups, and ordered rules
 - Keeps sync status for each upstream and retries failed fetches
 - Includes `/admin` for status, config editing, and template editing
 - Runs locally or in Docker
@@ -16,7 +16,6 @@ Merge upstream proxy subscriptions into a sing-box config built from `template.j
 
 - [Design document index](docs/README.md)
 - [Multi-template and Clash output plan](docs/multi-template-targets.md)
-- [Sing-box and Clash node compatibility research](docs/node-compatibility-research.md)
 - [Upstream-bound node template plan](docs/upstream-node-template.md)
 - [Admin frontend systematization plan](docs/admin-frontend-plan.md)
 
@@ -33,22 +32,14 @@ Use the demo config:
 ```bash
 Copy-Item config.example.json config.json
 New-Item -ItemType Directory -Force data
-Copy-Item template.json data/template.json
 Copy-Item templates/template.yml data/template.yml
-Copy-Item sample/demo-uri-list.txt data/demo-uri-list.txt
+Copy-Item sample/demo-clash.yaml data/demo-clash.yaml
 npm run dev
 ```
 
 Open:
 
 ```text
-http://127.0.0.1:4000/subscribe
-```
-
-Named template subscriptions are also supported when `templates[]` is configured:
-
-```text
-http://127.0.0.1:4000/subscribe/singbox
 http://127.0.0.1:4000/subscribe/clash
 ```
 
@@ -58,7 +49,8 @@ Admin page:
 http://127.0.0.1:4000/admin
 ```
 
-The demo setup copies `sample/demo-uri-list.txt` into the file library, so it works without a real subscription URL.
+The demo setup copies `sample/demo-clash.yaml` into the file library. Its proxy is
+a placeholder for checking rendered output; replace it with your own source to connect.
 
 ## Config
 
@@ -66,13 +58,7 @@ Example:
 
 ```json
 {
-  "template": "./template.json",
   "templates": [
-    {
-      "name": "singbox",
-      "target": "singbox",
-      "path": "./data/template.json"
-    },
     {
       "name": "clash",
       "target": "clash",
@@ -81,11 +67,10 @@ Example:
   ],
   "upstreams": [
     {
-      "name": "demo-uri-list",
+      "name": "demo-clash",
       "source": "local",
-      "from": "./data/demo-uri-list.txt",
-      "type": "uri",
-      "format": "raw",
+      "from": "./data/demo-clash.yaml",
+      "format": "yaml",
       "refresh": 300,
       "retry": 3,
       "retryInterval": 3,
@@ -97,21 +82,19 @@ Example:
 
 Fields:
 
-- `templates`: optional named output templates. `target` is `singbox` or `clash`
+- `templates`: output templates; `target` is always `clash`
 - `source`: `local` or `URI`
 - `from`: local file path or remote subscription URL
-- `type`: upstream semantic type, currently `uri` or `clash`
-- `format`: `raw`, `json`, or `yaml`
+- `format`: `node-list`, `json`, or `yaml`
 - `encoding`: optional, only `base64`
 - `refresh`: optional refresh interval in seconds
 - `retry`: optional fetch retry count, defaults to `3`
 - `retryInterval`: optional retry interval in seconds, defaults to `3`
 - `retryBackoff`: optional retry interval multiplier, defaults to `2`
-- `nodeTemplatePath`: optional local `node.template` file rendered before node normalization
+- `nodeTemplatePath`: optional template file rendered with the individual upstream payload
 
-`type: "uri"` scans raw input for proxy URIs, or reads JSON/YAML string arrays. `type: "clash"` reads Clash YAML/JSON objects with `proxies` and strips Clash-only fields like `udp` before outputting sing-box JSON.
-
-DNS, inbounds, and other target-specific behavior are owned by the template.
+JSON/YAML inputs retain their complete structure. The output template decides which
+fields to use and owns DNS, listeners, proxy groups, and other Clash settings.
 
 ## Rule sources and template data
 
@@ -203,8 +186,9 @@ The admin page at `/admin` shows upstream sync status:
 - last fetch error
 - failure count
 
-It also lets you edit `config.json` and `template.json`. Template changes are watched and reloaded automatically; config changes rebuild the upstream resource pool.
-When multiple templates are configured, the template editor can switch between named templates such as `singbox` and `clash`.
+It also lets you edit source configuration and the files selected by `templates[]`.
+Subscription requests read the current template contents; config changes rebuild the source resource pools.
+The output template editor manages the Clash template and its subscription address.
 
 ## Docker
 
@@ -217,12 +201,15 @@ docker compose up -d --build
 The compose file mounts these files as writable so `/admin` can save edits:
 
 - `./config.json` to `/app/config.json`
-- `./template.json` to `/app/template.json`
+- `./data` to `/app/data`
 
 For a first run with the demo config:
 
 ```bash
 Copy-Item config.example.json config.json
+New-Item -ItemType Directory -Force data
+Copy-Item templates/template.yml data/template.yml
+Copy-Item sample/demo-clash.yaml data/demo-clash.yaml
 docker compose up -d --build
 ```
 
