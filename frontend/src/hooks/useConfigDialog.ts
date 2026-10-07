@@ -2,8 +2,9 @@ import { useState } from 'react';
 import type { Workspace } from './useWorkspace';
 import type { Actions } from './useActions';
 import type { DialogData, Source, Template } from '../types/workspace';
+import { request } from '../lib/api';
 export function useConfigDialog(
-  { data, persist }: Workspace,
+  { data, persist, load }: Workspace,
   { setBusy, notify }: Actions,
 ) {
   const [dialog, setDialog] = useState<DialogData | null>(null);
@@ -15,14 +16,17 @@ export function useConfigDialog(
           ? { name: '', target: 'clash' as const, path: '' }
           : {
               name: '',
-              source: 'URI' as const,
+              source: 'local' as const,
               from: '',
               format: 'yaml' as const,
             }
         : data.config[kind]![index];
     setDialog({ kind, index, value });
   }
-  async function saveDialog(value: Source | Template) {
+  async function saveDialog(
+    value: Source | Template,
+    contents: Record<string, string>,
+  ) {
     if (!data || !dialog) return;
     if (
       dialog.kind === 'templates' &&
@@ -35,12 +39,13 @@ export function useConfigDialog(
       throw new Error('每种输出类型只能配置一个模板，避免订阅地址冲突。');
     setBusy('config');
     try {
-      const entries = [...(data.config[dialog.kind] ?? [])] as (
-        Source | Template
-      )[];
-      if (dialog.index === null) entries.push(value);
-      else entries[dialog.index] = value;
-      await persist({ ...data.config, [dialog.kind]: entries });
+      await request('/api/admin/entry', 'POST', {
+        kind: dialog.kind,
+        index: dialog.index,
+        value,
+        contents,
+      });
+      await load();
       setDialog(null);
       notify('配置已保存');
     } finally {

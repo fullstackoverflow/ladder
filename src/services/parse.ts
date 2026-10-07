@@ -1,8 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { parse } from "yaml";
 import { UpstreamEncoding, UpstreamFormat } from "../util/type";
 import { ParseURIs } from "./node";
-import { Render } from "./template";
 
 function Decode(content: string, encoding?: UpstreamEncoding): string {
     if (encoding) {
@@ -17,15 +15,6 @@ function Decode(content: string, encoding?: UpstreamEncoding): string {
     } else {
         return content;
     }
-}
-
-async function RenderTemplatePayload(payload: unknown, nodeTemplatePath: string | undefined, files: Record<string, string>) {
-    if (!nodeTemplatePath) return payload;
-
-    const template = files[nodeTemplatePath] ?? await readFile(nodeTemplatePath, { encoding: 'utf8' });
-    const rendered = Render(template, payload as Record<string, any>);
-    console.info(`[parse] applied node template path=${nodeTemplatePath}`);
-    return rendered;
 }
 
 function ParseTemplateInput(content: string, format: UpstreamFormat): unknown {
@@ -47,15 +36,7 @@ function ParseTemplateInput(content: string, format: UpstreamFormat): unknown {
             break;
     }
 }
-export function ParseRawProfile(content: string, format: UpstreamFormat, encoding: UpstreamEncoding | undefined): unknown {
+export function ParseProfile(content: string, format: UpstreamFormat, encoding: UpstreamEncoding | undefined): unknown {
     const decoded = Decode(content, encoding);
     return ParseTemplateInput(decoded, format);
-}
-
-export async function ParseProfile(content: string, format: UpstreamFormat, encoding: UpstreamEncoding | undefined, nodeTemplatePath?: string, files: Record<string, string> = {}): Promise<any> {
-    let payload = ParseRawProfile(content, format, encoding);
-    if (nodeTemplatePath) {
-        payload = await RenderTemplatePayload(payload, nodeTemplatePath, files);
-    }
-    return payload;
 }

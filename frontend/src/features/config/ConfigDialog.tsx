@@ -15,7 +15,10 @@ export function ConfigDialog({
   data: DialogData;
   busy: boolean;
   onClose: () => void;
-  onSave: (value: Source | Template) => Promise<void>;
+  onSave: (
+    value: Source | Template,
+    contents: Record<string, string>,
+  ) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -34,13 +37,14 @@ export function ConfigDialog({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    if (form.getAll('managedFilePending').includes('true')) {
-      setError('请等待文件读取或创建完成后再保存配置');
-      return;
+    const contents: Record<string, string> = {};
+    for (const field of ['from', 'path']) {
+      const content = form.get(`${field}Content`);
+      if (typeof content === 'string') contents[field] = content;
     }
     const next = readConfigForm(data, form);
     try {
-      await onSave(next);
+      await onSave(next, contents);
     } catch (error) {
       setError(String(error instanceof Error ? error.message : error));
     }

@@ -91,7 +91,7 @@ export function SourcesPage({ kind }: { kind: 'upstreams' | 'rules' }) {
             <Server size={16} />
             <p>
               当前来源均为远程
-              URL。只有本地文件来源支持编辑文件内容；新增来源时选择“本地文件”，从文件库选择、创建或上传文件后，卡片上会显示“编辑文件内容”按钮。
+              URL。新增本地来源时直接填写内容，保存后可以在卡片中编辑。
             </p>
           </div>
         )}

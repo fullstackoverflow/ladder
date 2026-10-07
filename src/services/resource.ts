@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { Upstream, UpstreamSource } from "../util/type";
-import { ParseProfile, ParseRawProfile } from "./parse";
+import { ParseProfile } from "./parse";
 
 export interface ResourceStatus {
     index: number;
@@ -11,7 +11,6 @@ export interface ResourceStatus {
     from: string;
     type?: string;
     format: string;
-    nodeTemplatePath?: string;
     refresh?: number;
     ready: boolean;
     contentLength: number;
@@ -44,7 +43,6 @@ function OneTimeCachePath(upstream: Upstream) {
         from: upstream.from,
         format: upstream.format,
         encoding: upstream.encoding,
-        nodeTemplatePath: upstream.nodeTemplatePath,
     });
     const hash = createHash("sha256").update(key).digest("hex").slice(0, 16);
     return join(process.cwd(), ".cache", "resources", `${hash}.txt`);
@@ -73,7 +71,7 @@ export class Resource {
         });
         this.cachePath = OneTimeCachePath(this.upstream);
 
-        if (this.upstream.refresh) {
+        if (this.upstream.source === UpstreamSource.URI && this.upstream.refresh) {
             void this.refreshLoop(true);
         } else {
             void this.oneTimeFetch();
@@ -85,11 +83,7 @@ export class Resource {
     }
 
     get encoding() {
-        return this.upstream.encoding;
-    }
-
-    get nodeTemplatePath() {
-        return this.upstream.nodeTemplatePath;
+        return this.upstream.source === UpstreamSource.URI ? this.upstream.encoding : undefined;
     }
 
     get name() {
@@ -106,7 +100,7 @@ export class Resource {
             await this.ready;
             if (!this.isReady) throw new Error(`Resource is not ready: ${this.name}`);
         }
-        return ParseProfile(draft ?? this.content, this.format, this.encoding, this.nodeTemplatePath, files);
+        return ParseProfile(draft ?? this.content, this.format, this.encoding);
     }
 
     stop() {
@@ -133,7 +127,6 @@ export class Resource {
         };
 
         if (this.cachePath !== undefined) status.cachePath = this.cachePath;
-        if (this.upstream.nodeTemplatePath !== undefined) status.nodeTemplatePath = this.upstream.nodeTemplatePath;
         if (this.upstream.refresh !== undefined) status.refresh = this.upstream.refresh;
         if (this.lastSuccessAt) status.lastSuccessAt = this.lastSuccessAt.toISOString();
         if (this.lastErrorAt) status.lastErrorAt = this.lastErrorAt.toISOString();
@@ -189,7 +182,7 @@ export class Resource {
     }
 
     private retryTimes() {
-        return this.upstream.retry ?? 3;
+        return this.upstream.source === UpstreamSource.Local ? 0 : this.upstream.retry ?? 3;
     }
 
     private retryIntervalMs() {
@@ -310,21 +303,7 @@ export class ResourceManager {
         return Promise.all(this.pool.map(resource => resource.profile(files)));
     }
 
-    async RawProfiles(): Promise<any[]> {
-        return (await Promise.all(this.pool.map(async resource => {
-            await resource.ready.catch(() => undefined);
-            if (!resource.isReady) return undefined;
-            return ParseRawProfile(resource.content, resource.format, resource.encoding);
-        }))).filter(Boolean);
-    }
 
-    async RawProfile(index: number): Promise<any> {
-        const resource = this.pool[index];
-        if (!resource) throw new Error(`No upstream at index ${index}`);
-        await resource.ready.catch(() => undefined);
-        if (!resource.isReady) throw new Error(`upstream ${index} is not ready`);
-        return ParseRawProfile(resource.content, resource.format, resource.encoding);
-    }
 }
 
 const resource_manager = new ResourceManager();

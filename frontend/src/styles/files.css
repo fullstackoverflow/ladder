@@ -224,28 +224,3 @@
   font-size: 9px;
   background: #fff;
 }
-.raw-panel {
-  border-top: 1px solid var(--line);
-  max-height: 240px;
-  display: flex;
-  flex-direction: column;
-}
-.raw-panel header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  font-size: 10px;
-  color: #8a98af;
-  background: #f8faff;
-}
-.raw-panel header .icon-button {
-  margin-left: auto;
-}
-.raw-panel pre {
-  margin: 0;
-  overflow: auto;
-  padding: 12px 16px;
-  font-size: 11px;
-  color: #76849d;
-}

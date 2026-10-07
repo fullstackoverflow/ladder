@@ -5,14 +5,7 @@ export function knownFiles(config: Config): FileMeta[] {
     label: t.name,
     category: '输出模板',
   }));
-  config.upstreams.forEach((source, nodeIndex) => {
-    if (source.nodeTemplatePath)
-      files.push({
-        path: source.nodeTemplatePath,
-        label: source.name,
-        category: '节点模板',
-        nodeIndex,
-      });
+  config.upstreams.forEach((source) => {
     if (source.source === 'local')
       files.push({
         path: source.from,

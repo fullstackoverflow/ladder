@@ -1,7 +1,7 @@
 import { FileText, FolderOpen } from 'lucide-react';
 import { useWorkspaceContext } from '../../app/WorkspaceProvider';
 
-export function FileExplorer({ onSelect }: { onSelect: () => void }) {
+export function FileExplorer() {
   const { metaFiles, dirtyFiles, selectedFile, setSelectedFile } =
     useWorkspaceContext();
   return (
@@ -11,7 +11,7 @@ export function FileExplorer({ onSelect }: { onSelect: () => void }) {
         工作区文件<span>{metaFiles.length}</span>
       </div>
       <div className="explorer-list">
-        {['输出模板', '节点模板', '本地上游', '规则文件'].map((category) => {
+        {['输出模板', '本地上游', '规则文件'].map((category) => {
           const group = metaFiles.filter((file) => file.category === category);
           return group.length ? (
             <section key={category}>
@@ -22,7 +22,6 @@ export function FileExplorer({ onSelect }: { onSelect: () => void }) {
                   title={file.path}
                   onClick={() => {
                     setSelectedFile(file.path);
-                    onSelect();
                   }}
                   key={file.path}
                 >

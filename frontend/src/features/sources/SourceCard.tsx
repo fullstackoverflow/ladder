@@ -1,7 +1,6 @@
 import {
   ArrowDown,
   ArrowUp,
-  FileCode2,
   FileText,
   Globe2,
   GripVertical,
@@ -139,16 +138,6 @@ export function SourceCard({
           >
             <FileText size={14} />
             编辑文件内容
-          </button>
-        )}
-        {source.nodeTemplatePath && (
-          <button
-            className="icon-button"
-            title="编辑节点模板"
-            aria-label={`编辑 ${source.name} 的节点模板`}
-            onClick={() => onFile(source.nodeTemplatePath!)}
-          >
-            <FileCode2 size={16} />
           </button>
         )}
         <button

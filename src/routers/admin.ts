@@ -1,12 +1,12 @@
 import Router from '@koa/router';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { validate } from 'typia';
+import { validateEquals } from 'typia';
 import { GetConfig, GetConfigPath, SaveConfig } from '../services/config';
 import { GetResourceManager, GetRuleManager, GetTemplateData, ResourceManager } from '../services/resource';
 import { Render } from '../services/template';
 import { Config } from '../util/type';
-import { CreateDataFile, ListDataFiles } from '../services/data';
+import { SaveEntry, EntryRequest } from '../services/entry';
 
 const router = new Router();
 
@@ -78,20 +78,10 @@ async function AdminState(config = GetConfig()) {
     ...(await ReadOptionalFile(template.path)),
   })));
 
-  const nodeTemplates = await Promise.all((config.upstreams ?? [])
-    .map((upstream, upstreamIndex) => ({ upstream, upstreamIndex }))
-    .filter(({ upstream }) => Boolean(upstream.nodeTemplatePath))
-    .map(async ({ upstream, upstreamIndex }) => ({
-      upstreamIndex,
-      upstreamName: upstream.name,
-      ...(await ReadOptionalFile(upstream.nodeTemplatePath!)),
-    })));
-
   return {
     configPath: GetConfigPath(),
     config,
     templates,
-    nodeTemplates,
     localFiles: await Promise.all([...(config.upstreams ?? []), ...(config.rules ?? [])]
       .filter(source => source.source === 'local').map(source => ReadOptionalFile(source.from))),
     resources: GetResourceManager().Status(),
@@ -100,7 +90,7 @@ async function AdminState(config = GetConfig()) {
 }
 
 function ValidateConfig(config: Config) {
-  const result = validate<Config>(config);
+  const result = validateEquals<Config>(config);
   if (!result.success) {
     throw new Error(JSON.stringify(result.errors, null, 2));
   }
@@ -111,9 +101,7 @@ function AllowedFilePaths(config = GetConfig()) {
     ...(config.templates ?? []).map((template) => template.path),
     ...[...(config.upstreams ?? []), ...(config.rules ?? [])]
       .filter(source => source.source === 'local').map(source => source.from),
-    ...(config.upstreams ?? [])
-      .map((upstream) => upstream.nodeTemplatePath)
-      .filter((path): path is string => Boolean(path)),
+
   ]);
 }
 
@@ -179,14 +167,12 @@ router.get('/api/admin/state', async ctx => {
   ctx.body = await AdminState();
 });
 
-router.get('/api/admin/files', async ctx => {
-  ctx.body = await ListDataFiles();
-});
-
-router.post('/api/admin/files', async ctx => {
+router.post('/api/admin/entry', async ctx => {
   try {
-    const body = await ReadJson<{ name: string; content: string }>(ctx);
-    ctx.body = await CreateDataFile(body.name, body.content);
+    const saved = await SaveEntry(await ReadJson<EntryRequest>(ctx));
+    GetResourceManager().SetUpstreams(saved.upstreams);
+    GetRuleManager().SetUpstreams(saved.rules ?? []);
+    ctx.body = await AdminState(saved);
   } catch (error) {
     ctx.status = 400;
     ctx.body = error instanceof Error ? error.message : String(error);
@@ -238,43 +224,6 @@ router.post('/api/admin/preview/render', async ctx => {
     ValidateConfig(config);
     ctx.type = 'text/plain';
     ctx.body = await RenderPreview(body.target, config, body.files);
-  } catch (error) {
-    ctx.status = 400;
-    ctx.body = error instanceof Error ? error.message : String(error);
-  }
-});
-
-router.post('/api/admin/preview/profiles', async ctx => {
-  try {
-    ctx.body = {
-      raw: await GetResourceManager().RawProfiles(),
-      rendered: await GetResourceManager().Profiles(),
-    };
-  } catch (error) {
-    ctx.status = 400;
-    ctx.body = error instanceof Error ? error.message : String(error);
-  }
-});
-
-router.post('/api/admin/preview/profiles/raw', async ctx => {
-  try {
-    ctx.body = await GetResourceManager().RawProfiles();
-  } catch (error) {
-    ctx.status = 400;
-    ctx.body = error instanceof Error ? error.message : String(error);
-  }
-});
-
-router.post('/api/admin/preview/profiles/raw/:index', async ctx => {
-  const index = Number(ctx.params.index);
-  if (!Number.isInteger(index) || index < 0) {
-    ctx.status = 400;
-    ctx.body = 'invalid upstream index';
-    return;
-  }
-
-  try {
-    ctx.body = await GetResourceManager().RawProfile(index);
   } catch (error) {
     ctx.status = 400;
     ctx.body = error instanceof Error ? error.message : String(error);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Source } from '../../types/workspace';
 import { SourceOptions } from './SourceOptions';
-import { ManagedFileField } from './ManagedFileField';
+import { FileContentField } from './FileContentField';
 export function SourceFields({
   value,
   kind,
@@ -9,7 +9,7 @@ export function SourceFields({
   value: Source;
   kind: 'upstreams' | 'rules';
 }) {
-  const [sourceType, setSourceType] = useState(value.source || 'URI');
+  const [sourceType, setSourceType] = useState(value.source || 'local');
   return (
     <>
       <label className="field">
@@ -36,36 +36,24 @@ export function SourceFields({
         </select>
       </label>
       {sourceType === 'local' ? (
-        <ManagedFileField
+        <FileContentField
           name="from"
           label="本地文件"
           value={value.source === 'local' ? value.from : ''}
-          defaultName={kind === 'rules' ? 'rules.yaml' : 'upstream.yaml'}
-          defaultContent="{}\n"
         />
       ) : (
         <label className="field wide">
           订阅 URL
           <input
             name="from"
-            defaultValue={value.from}
+            defaultValue={value.source === 'URI' ? value.from : ''}
             required
             placeholder="https://…"
             type="url"
           />
         </label>
       )}
-      {kind === 'upstreams' && (
-        <ManagedFileField
-          name="nodeTemplatePath"
-          label="节点模板"
-          value={value.nodeTemplatePath}
-          optional
-          defaultName="node-template.yaml"
-          defaultContent="{{ toYaml($) }}\n"
-        />
-      )}
-      <SourceOptions value={value} />
+      {sourceType === 'URI' && <SourceOptions value={value} />}
     </>
   );
 }

@@ -15,25 +15,21 @@ export function readConfigForm(
     };
   else {
     const source: Source = {
-      ...(data.value as Source),
       name: string('name'),
       source: string('source') as Source['source'],
       from: string('from'),
       format: string('format') as Source['format'],
     };
-    delete source.encoding;
-    delete source.nodeTemplatePath;
-    if (string('encoding')) source.encoding = 'base64';
-    if (data.kind === 'upstreams' && string('nodeTemplatePath'))
-      source.nodeTemplatePath = string('nodeTemplatePath');
+    if (source.source === 'URI' && string('encoding'))
+      source.encoding = 'base64';
     for (const key of [
       'refresh',
       'retry',
       'retryInterval',
       'retryBackoff',
     ] as const) {
-      delete source[key];
-      if (string(key)) source[key] = Number(string(key));
+      if (source.source === 'URI' && string(key))
+        source[key] = Number(string(key));
     }
     next = source;
   }

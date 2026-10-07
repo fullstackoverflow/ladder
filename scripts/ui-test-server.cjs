@@ -12,7 +12,6 @@ const source = (name, filename, format = 'json') => ({
   source: 'local',
   from: join(dataDir, filename),
   format,
-  retry: 0,
 });
 const config = {
   templates: [

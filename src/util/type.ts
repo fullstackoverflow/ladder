@@ -35,16 +35,20 @@ export enum UpstreamEncoding {
     Base64 = 'base64'
 }
 
-export interface Upstream {
+interface SourceData {
     /**
      * 本地文件/订阅地址
      */
-    source: UpstreamSource
     name: string
     /**
      * 文件路径/url
      */
     from: string
+    format: UpstreamFormat
+}
+
+export interface RemoteUpstream extends SourceData {
+    source: UpstreamSource.URI
     /**
      * 内容是否编码过(仅支持base64解码目前)
      */
@@ -52,7 +56,6 @@ export interface Upstream {
     /**
      * 内容(解码后)的格式(json/yaml/node-list)
      */
-    format: UpstreamFormat
     /**
      * 定时刷新时间
      */
@@ -69,11 +72,18 @@ export interface Upstream {
      * 重试退避倍数
      */
     retryBackoff?: number
-    /**
-     * 可选的本地节点模板文件。模板使用 {{ ... }} JS slot 渲染上游 raw input。
-     */
-    nodeTemplatePath?: string
 }
+
+export interface LocalUpstream extends SourceData {
+    source: UpstreamSource.Local
+    encoding?: never
+    refresh?: never
+    retry?: never
+    retryInterval?: never
+    retryBackoff?: never
+}
+
+export type Upstream = LocalUpstream | RemoteUpstream;
 
 export interface Config {
     templates: Array<OutputTemplate>,
@@ -82,6 +92,6 @@ export interface Config {
 }
 
 /** Ordered files; each parsed payload occupies one slot in $.rules. */
-export interface RuleSource extends Omit<Upstream, 'format' | 'nodeTemplatePath'> {
+export type RuleSource = (Omit<LocalUpstream, 'format'> | Omit<RemoteUpstream, 'format'>) & {
     format: UpstreamFormat.JSON | UpstreamFormat.Yaml
-}
+};

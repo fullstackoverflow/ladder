@@ -1,64 +1,91 @@
 import { test, expect } from '@playwright/test';
 
-test('managed files can be created, selected, edited and reused without entering paths', async ({
+test('local contents create UUID files in one save without upload or file selection', async ({
   page,
 }) => {
   const original = await (await page.request.get('/api/admin/state')).json();
-  const filename = `new-upstream-${Date.now()}.json`;
   try {
     await page.goto('/admin');
     await page.getByRole('button', { name: '新增上游', exact: true }).click();
-    await page.getByLabel('名称', { exact: true }).fill('文件库上游');
+    await page.getByLabel('名称', { exact: true }).fill('自动管理上游');
+    await expect(
+      page.getByRole('combobox', { name: '来源', exact: true }),
+    ).toHaveValue('local');
+    await expect(page.getByLabel('本地文件内容', { exact: true })).toHaveValue(
+      '',
+    );
+    await page
+      .getByRole('combobox', { name: '来源', exact: true })
+      .selectOption('URI');
+    await page.getByText('刷新与高级设置', { exact: true }).click();
+    await expect(
+      page.getByRole('combobox', { name: '编码', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel('使用节点模板', { exact: true })).toHaveCount(
+      0,
+    );
     await page
       .getByRole('combobox', { name: '来源', exact: true })
       .selectOption('local');
+    for (const label of [
+      '编码',
+      '刷新间隔（秒）',
+      '重试次数',
+      '重试间隔（秒）',
+      '退避倍数',
+    ]) {
+      await expect(page.getByLabel(label, { exact: true })).toHaveCount(0);
+    }
+    await expect(page.locator('.config-dialog .advanced')).toHaveCount(0);
     await page
       .getByRole('combobox', { name: '内容格式', exact: true })
       .selectOption('json');
-    const field = page
-      .locator('.managed-file-field')
-      .filter({
-        has: page.getByRole('combobox', { name: '本地文件', exact: true }),
-      });
-    await field.getByRole('button', { name: '新建 / 上传文件' }).click();
-    await field.getByLabel('文件名', { exact: true }).fill(filename);
-    await field
-      .getByLabel('初始文件内容')
+    await page
+      .getByLabel('本地文件内容', { exact: true })
       .fill('{"proxies":[{"name":"Managed node"}]}');
-    await field.getByRole('button', { name: '创建文件并选用' }).click();
-    await expect(field.getByRole('combobox')).toHaveValue(
-      new RegExp(filename.replaceAll('.', '\\.')),
-    );
-    await expect(page.getByLabel('文件路径', { exact: true })).toHaveCount(0);
+    await expect(page.locator('input[type=file]')).toHaveCount(0);
+    await expect(page.getByLabel('文件名', { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole('combobox', { name: '本地文件', exact: true }),
+    ).toHaveCount(0);
     await page.getByRole('button', { name: '保存配置', exact: true }).click();
     const card = page
       .locator('.source-card')
-      .filter({ has: page.getByRole('heading', { name: '文件库上游' }) });
+      .filter({ has: page.getByRole('heading', { name: '自动管理上游' }) });
     await card
       .getByRole('button', { name: '编辑文件内容', exact: true })
       .click();
     await expect(card.locator('.cm-content')).toContainText('Managed node');
+    const saved = await (await page.request.get('/api/admin/state')).json();
+    const path = saved.config.upstreams.at(-1).from;
+    expect(Object.keys(saved.config.upstreams.at(-1)).sort()).toEqual([
+      'format',
+      'from',
+      'name',
+      'source',
+    ]);
+    expect(path.split(/[\\/]/).at(-1)).toMatch(/^[0-9a-f-]{36}\.json$/);
     await card
       .locator('.cm-content')
       .fill('{"proxies":[{"name":"Edited managed node"}]}');
     await card.getByRole('button', { name: '保存', exact: true }).click();
     await expect(page.locator('.toast')).toContainText('文件已保存');
+    await card
+      .getByRole('button', { name: '编辑 自动管理上游 的配置' })
+      .click();
+    await page.getByLabel('名称', { exact: true }).fill('改名后的上游');
+    await page.getByRole('button', { name: '保存配置', exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: '改名后的上游' }),
+    ).toBeVisible();
+    const renamed = await (await page.request.get('/api/admin/state')).json();
+    expect(renamed.config.upstreams.at(-1).from).toBe(path);
     const profiles = await (
       await page.request.post('/api/admin/preview/profiles/rendered')
     ).json();
     expect(profiles.upstreams.at(-1).proxies[0].name).toBe(
       'Edited managed node',
     );
-    await card.getByRole('button', { name: '编辑 文件库上游 的配置' }).click();
-    await expect(
-      page.getByRole('combobox', { name: '本地文件', exact: true }),
-    ).toHaveValue(new RegExp(filename.replaceAll('.', '\\.')));
-    await page.getByRole('button', { name: '删除', exact: true }).click();
-    await page.getByRole('button', { name: '确认删除', exact: true }).click();
-    const library = await (await page.request.get('/api/admin/files')).json();
-    expect(
-      library.some((file: { name: string }) => file.name === filename),
-    ).toBe(true);
     await page
       .getByRole('navigation')
       .getByRole('button', { name: /输出模板/ })
@@ -66,13 +93,18 @@ test('managed files can be created, selected, edited and reused without entering
     await page
       .getByRole('button', { name: '编辑 Clash 主配置 的配置' })
       .click();
+    await page.getByRole('button', { name: '删除', exact: true }).click();
+    await page.getByRole('button', { name: '确认删除', exact: true }).click();
+    await page.getByRole('button', { name: '新增模板', exact: true }).click();
+    await page.getByLabel('名称', { exact: true }).fill('新模板');
     await page
-      .getByRole('combobox', { name: '模板文件', exact: true })
-      .selectOption({ label: filename });
+      .getByLabel('模板文件内容', { exact: true })
+      .fill('marker: managed-template\n');
     await page.getByRole('button', { name: '保存配置', exact: true }).click();
-    expect(await (await page.request.get('/subscribe/clash')).json()).toEqual({
-      proxies: [{ name: 'Edited managed node' }],
-    });
+    await expect(page.getByRole('heading', { name: '新模板' })).toBeVisible();
+    expect(await (await page.request.get('/subscribe/clash')).text()).toBe(
+      'marker: managed-template\n',
+    );
   } finally {
     await page.request.put('/api/admin/config', { data: original.config });
   }
@@ -316,19 +348,15 @@ test('source dialog, pointer sorting, deletion, and small screens remain usable'
     .click();
   await page.getByRole('button', { name: '新增规则源', exact: true }).click();
   await page.getByLabel('名称', { exact: true }).fill('新增规则');
+  await expect(
+    page.getByRole('combobox', { name: '来源', exact: true }),
+  ).toHaveValue('local');
   await page
     .getByRole('combobox', { name: '来源', exact: true })
     .selectOption('local');
-  await page.getByRole('button', { name: '新建 / 上传文件' }).click();
-  await page.getByLabel('上传文本文件').setInputFiles({
-    name: `uploaded-rules-${Date.now()}.yaml`,
-    mimeType: 'text/yaml',
-    buffer: Buffer.from('rules:\n  - MATCH,Proxy\n'),
-  });
-  await page.getByRole('button', { name: '创建文件并选用' }).click();
-  await expect(
-    page.getByRole('combobox', { name: '本地文件', exact: true }),
-  ).toHaveValue(/data.*uploaded-rules/);
+  await page
+    .getByLabel('本地文件内容', { exact: true })
+    .fill('rules:\n  - MATCH,Proxy\n');
   await page.getByRole('button', { name: '保存配置', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '新增规则', exact: true }),

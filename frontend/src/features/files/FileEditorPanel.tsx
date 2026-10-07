@@ -1,25 +1,8 @@
-import {
-  Braces,
-  Check,
-  FileCode2,
-  LoaderCircle,
-  Save,
-  Search,
-  X,
-} from 'lucide-react';
+import { Check, FileCode2, Save, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useWorkspaceContext } from '../../app/WorkspaceProvider';
 import { Editor } from '../../components/editor/Editor';
-import { useRawProfile } from './useRawProfile';
-export function FileEditorPanel({
-  rawOpen,
-  setRawOpen,
-  path,
-}: {
-  rawOpen: boolean;
-  setRawOpen: (open: boolean) => void;
-  path?: string;
-}) {
+export function FileEditorPanel({ path }: { path?: string }) {
   const [searchRequest, setSearchRequest] = useState(0);
   const {
     metaFiles,
@@ -33,11 +16,6 @@ export function FileEditorPanel({
   } = useWorkspaceContext();
   const selectedFile = path ?? workspaceFile;
   const fileMeta = metaFiles.find((file) => file.path === selectedFile);
-  const { raw, rawBusy } = useRawProfile(
-    fileMeta?.nodeIndex,
-    selectedFile,
-    rawOpen,
-  );
   return (
     <div className="editor-panel">
       <div className="editor-toolbar">
@@ -62,15 +40,6 @@ export function FileEditorPanel({
             <Search size={14} />
             查找 / 替换
           </button>
-          {fileMeta?.nodeIndex !== undefined && (
-            <button
-              className="button compact"
-              onClick={() => setRawOpen(!rawOpen)}
-            >
-              <Braces size={14} />
-              原始数据
-            </button>
-          )}
           <button
             className="button primary compact"
             disabled={Boolean(busy)}
@@ -102,22 +71,6 @@ export function FileEditorPanel({
           void run('file', () => saveFile(selectedFile), '文件已保存并重新加载')
         }
       />
-      {rawOpen && (
-        <div className="raw-panel">
-          <header>
-            <span>上游原始数据</span>
-            {rawBusy && <LoaderCircle size={14} className="spin" />}
-            <button
-              className="icon-button"
-              aria-label="关闭原始数据"
-              onClick={() => setRawOpen(false)}
-            >
-              <X size={14} />
-            </button>
-          </header>
-          <pre>{raw}</pre>
-        </div>
-      )}
       <footer className="editor-status">
         <span>{fileMeta?.category} · UTF-8</span>
         <span>Ctrl / ⌘ + S 保存</span>

@@ -1,15 +1,25 @@
-export interface Source {
+interface SourceData {
   name: string;
-  source: 'local' | 'URI';
   from: string;
   format: 'json' | 'yaml' | 'node-list';
+}
+interface RemoteSource extends SourceData {
+  source: 'URI';
   encoding?: 'base64';
   refresh?: number;
   retry?: number;
   retryInterval?: number;
   retryBackoff?: number;
-  nodeTemplatePath?: string;
 }
+interface LocalSource extends SourceData {
+  source: 'local';
+  encoding?: never;
+  refresh?: never;
+  retry?: never;
+  retryInterval?: never;
+  retryBackoff?: never;
+}
+export type Source = LocalSource | RemoteSource;
 export interface Template {
   name: string;
   target: 'clash';
@@ -40,14 +50,12 @@ export interface AdminState {
   resources: ResourceStatus[];
   ruleResources: ResourceStatus[];
   templates: (FileData & Template)[];
-  nodeTemplates: FileData[];
   localFiles: FileData[];
 }
 export interface FileMeta {
   path: string;
   label: string;
   category: string;
-  nodeIndex?: number;
 }
 export type View = 'upstreams' | 'rules' | 'templates' | 'files';
 

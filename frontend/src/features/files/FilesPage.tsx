@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { FolderOpen } from 'lucide-react';
 import { useWorkspaceContext } from '../../app/WorkspaceProvider';
 import { Empty } from '../../components/EmptyState';
@@ -6,11 +5,10 @@ import { FileExplorer } from './FileExplorer';
 import { FileEditorPanel } from './FileEditorPanel';
 export function FilesPage() {
   const { metaFiles } = useWorkspaceContext();
-  const [rawOpen, setRawOpen] = useState(false);
   return metaFiles.length ? (
     <div className="file-workspace">
-      <FileExplorer onSelect={() => setRawOpen(false)} />
-      <FileEditorPanel rawOpen={rawOpen} setRawOpen={setRawOpen} />
+      <FileExplorer />
+      <FileEditorPanel />
     </div>
   ) : (
     <Empty

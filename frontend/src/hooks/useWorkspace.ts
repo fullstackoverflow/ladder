@@ -14,11 +14,10 @@ export function useWorkspace() {
   const [loadError, setLoadError] = useState('');
   const apply = useCallback((next: AdminState) => {
     const incoming = Object.fromEntries(
-      [
-        ...(next.templates || []),
-        ...(next.nodeTemplates || []),
-        ...(next.localFiles || []),
-      ].map((file) => [file.path, file.content]),
+      [...(next.templates || []), ...(next.localFiles || [])].map((file) => [
+        file.path,
+        file.content,
+      ]),
     );
     const allowed = knownFiles(next.config);
     const merged = { ...incoming };

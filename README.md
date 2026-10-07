@@ -16,7 +16,6 @@ Render Clash configurations from upstreams, rules, and configured templates.
 
 - [Design document index](docs/README.md)
 - [Multi-template and Clash output plan](docs/multi-template-targets.md)
-- [Upstream-bound node template plan](docs/upstream-node-template.md)
 - [Admin frontend systematization plan](docs/admin-frontend-plan.md)
 
 ## Local Run
@@ -27,13 +26,10 @@ Install dependencies:
 npm ci
 ```
 
-Use the demo config:
+Initialize an empty workspace:
 
 ```bash
 Copy-Item config.example.json config.json
-New-Item -ItemType Directory -Force data
-Copy-Item templates/template.yml data/template.yml
-Copy-Item sample/demo-clash.yaml data/demo-clash.yaml
 npm run dev
 ```
 
@@ -49,8 +45,11 @@ Admin page:
 http://127.0.0.1:4000/admin
 ```
 
-The demo setup copies `sample/demo-clash.yaml` into the file library. Its proxy is
-a placeholder for checking rendered output; replace it with your own source to connect.
+Open `/admin` and enter local upstream, rule and template contents. The server
+creates `data/` automatically when saving. Configure a Clash template before using
+`/subscribe/clash`. You can paste the contents of `templates/template.yml` as an
+output template and `sample/demo-clash.yaml` as a source; the sample proxy is only
+a placeholder for checking rendered output.
 
 ## Config
 
@@ -58,25 +57,9 @@ Example:
 
 ```json
 {
-  "templates": [
-    {
-      "name": "clash",
-      "target": "clash",
-      "path": "./data/template.yml"
-    }
-  ],
-  "upstreams": [
-    {
-      "name": "demo-clash",
-      "source": "local",
-      "from": "./data/demo-clash.yaml",
-      "format": "yaml",
-      "refresh": 300,
-      "retry": 3,
-      "retryInterval": 3,
-      "retryBackoff": 2
-    }
-  ]
+  "templates": [],
+  "upstreams": [],
+  "rules": []
 }
 ```
 
@@ -84,14 +67,13 @@ Fields:
 
 - `templates`: output templates; `target` is always `clash`
 - `source`: `local` or `URI`
-- `from`: local file path or remote subscription URL
+- `from`: server-generated file reference for local sources, or a remote subscription URL
 - `format`: `node-list`, `json`, or `yaml`
-- `encoding`: optional, only `base64`
-- `refresh`: optional refresh interval in seconds
-- `retry`: optional fetch retry count, defaults to `3`
-- `retryInterval`: optional retry interval in seconds, defaults to `3`
-- `retryBackoff`: optional retry interval multiplier, defaults to `2`
-- `nodeTemplatePath`: optional template file rendered with the individual upstream payload
+- `encoding`: remote sources only; optional `base64`
+- `refresh`: remote sources only; optional refresh interval in seconds
+- `retry`: remote sources only; optional fetch retry count, defaults to `3`
+- `retryInterval`: remote sources only; retry interval in seconds, defaults to `3`
+- `retryBackoff`: remote sources only; retry interval multiplier, defaults to `2`
 
 JSON/YAML inputs retain their complete structure. The output template decides which
 fields to use and owns DNS, listeners, proxy groups, and other Clash settings.
@@ -127,8 +109,8 @@ rules:
 ```
 
 Migrate output template expressions such as `$.map(...)` to
-`$.upstreams.map(...)`. Node templates still receive their individual upstream's
-raw payload as `$`.
+`$.upstreams.map(...)`. All scripts run in the output template; sources provide
+parsed data without a separate transformation template.
 
 The Files editor also includes all local upstream and rule files. Saving a local
 source reloads its resource immediately. Output preview uses file drafts without
@@ -145,8 +127,8 @@ See [frontend structure](frontend/README.md) for component, feature, hook, and
 style ownership.
 
 - Sidebar navigation for upstreams, rule sources, output templates, and files
-- Choose, create or upload local sources and templates in the server-managed file library,
-  without entering filesystem paths
+- Enter local source and template contents directly; the server creates UUID files
+  and their configuration references when saving
 - Edit local upstream, rule and template file contents directly inside their cards;
   collapsing an editor preserves its draft
 - Drag or keyboard sorting for upstream and rule files, with up/down buttons as an alternative
@@ -157,10 +139,13 @@ style ownership.
 - Inline source status, search, loading states, and persistent error notifications
 - Responsive layouts for smaller screens
 
-The file library lives in `data/` beside the active configuration file. Move existing
-local files there manually, or upload them through the settings dialog, then select
-them from the library. Creating a file never overwrites an existing file, and removing a configuration reference
-keeps the file for reuse. Back up `config.json` and `data/` together. The included
+Managed files live in `data/` beside the active configuration file. Start with
+`{ "templates": [], "upstreams": [], "rules": [] }`, then add local sources and a
+Clash template by entering their contents in the admin dialogs. Saving generates
+UUID filenames and stores their references automatically. There is no file upload,
+filename entry, or library selection. Cancelling a new entry creates no file;
+editing an existing entry's settings preserves its file reference. Back up
+`config.json` and `data/` together. The included
 Docker Compose configuration mounts `./data` into `/app/data` for persistence.
 
 For frontend development, run `npm run dev` for the Koa server on port 4000,
@@ -203,13 +188,10 @@ The compose file mounts these files as writable so `/admin` can save edits:
 - `./config.json` to `/app/config.json`
 - `./data` to `/app/data`
 
-For a first run with the demo config:
+For a first run with an empty workspace:
 
 ```bash
 Copy-Item config.example.json config.json
-New-Item -ItemType Directory -Force data
-Copy-Item templates/template.yml data/template.yml
-Copy-Item sample/demo-clash.yaml data/demo-clash.yaml
 docker compose up -d --build
 ```
 

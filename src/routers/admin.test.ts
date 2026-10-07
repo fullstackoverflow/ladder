@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { once } from 'node:events';
@@ -20,7 +20,7 @@ test('admin and subscription share ordered data, local editing, and draft previe
             writeFile(a, '{"rules":["a"],"metadata":"preserved"}'),
             writeFile(b, 'rules:\n  - b\n'),
         ]);
-        const source = (name: string, from: string, format = 'json') => ({ name, from, format, source: 'local', retry: 0 });
+        const source = (name: string, from: string, format = 'json') => ({ name, from, format, source: 'local' });
         const config = {
             templates: [{ name: 'test', target: 'clash', path: template }],
             upstreams: [source('nodes', local)], rules: [source('a', a), source('b', b, 'yaml')],
@@ -66,6 +66,16 @@ test('admin and subscription share ordered data, local editing, and draft previe
             method: 'PUT', body: JSON.stringify({ ...config, templates: [{ ...config.templates[0], target: 'singbox' }] }),
         });
         assert.equal(unsupported.status, 400);
+        for (const extra of [
+            { encoding: 'base64' }, { refresh: 10 }, { retry: 3 },
+            { retryInterval: 3 }, { retryBackoff: 2 }, { nodeTemplatePath: template },
+        ]) {
+            const invalid = await fetch(base + '/api/admin/config', {
+                method: 'PUT', body: JSON.stringify({ ...config, upstreams: [{ ...config.upstreams[0], ...extra }] }),
+            });
+            assert.equal(invalid.status, 400);
+        }
+        assert.equal(Object.hasOwn(initial, 'nodeTemplates'), false);
         assert.deepEqual((await request('/subscribe/clash')).rules, [{ rules: ['a'], metadata: 'preserved' }, { rules: ['b'] }]);
         config.rules.reverse();
         await request('/api/admin/config', 'PUT', config);
@@ -89,25 +99,36 @@ test('admin and subscription share ordered data, local editing, and draft previe
             method: 'PUT', body: JSON.stringify({ path: join(dir, 'unreferenced.json'), content: '{}' }),
         });
         assert.equal(forbidden.status, 400);
-        const managed = await request('/api/admin/files', 'POST', { name: 'managed.json', content: '{"rules":["managed"]}' });
-        assert.equal(managed.path, join(dir, 'data', 'managed.json'));
-        assert.equal(await readFile(managed.path, 'utf8'), '{"rules":["managed"]}');
-        assert.deepEqual(await request('/api/admin/files'), [managed]);
+        assert.equal((await fetch(base + '/api/admin/files')).status, 404);
+        const managedState = await request('/api/admin/entry', 'POST', {
+            kind: 'rules', index: 0, value: { ...config.rules[0], from: 'ignored-client-path', format: 'json' },
+            contents: { from: '{"rules":["managed"]}' },
+        });
+        const managedPath = managedState.config.rules[0].from;
+        assert.match(managedPath, /[0-9a-f-]{36}\.json$/);
+        assert.ok(managedPath.startsWith(join(dir, 'data')));
+        assert.equal(await readFile(managedPath, 'utf8'), '{"rules":["managed"]}');
+        const beforeInvalid = await readdir(join(dir, 'data'));
         for (const body of [
-            { name: '../escaped.json', content: '{}' },
-            { name: '..\\escaped.json', content: '{}' },
-            { name: 'managed.json', content: 'overwrite' },
-            { name: 'private.json' },
+            { kind: 'rules', index: null, value: source('empty', 'client-path') },
+            { kind: 'rules', index: null, value: source('bad', ''), contents: { from: 3 } },
+            { kind: 'templates', index: null, value: { name: 'bad', target: 'singbox', path: '' }, contents: { path: 'test' } },
         ]) {
-            const invalid = await fetch(base + '/api/admin/files', { method: 'POST', body: JSON.stringify(body) });
+            const invalid = await fetch(base + '/api/admin/entry', { method: 'POST', body: JSON.stringify(body) });
             assert.equal(invalid.status, 400);
         }
-        assert.equal(await readFile(managed.path, 'utf8'), '{"rules":["managed"]}');
-        config.rules[0]!.from = managed.path;
-        await request('/api/admin/config', 'PUT', config);
+        assert.deepEqual(await readdir(join(dir, 'data')), beforeInvalid);
+        const renamed = await request('/api/admin/entry', 'POST', {
+            kind: 'rules', index: 0, value: { ...managedState.config.rules[0], name: 'renamed', from: '../client-path' },
+        });
+        assert.equal(renamed.config.rules[0].from, managedPath);
         assert.deepEqual((await request('/subscribe/clash')).rules[0], { rules: ['managed'] });
-        await request('/api/admin/file', 'PUT', { path: managed.path, content: '{"rules":["edited"]}' });
+        await request('/api/admin/file', 'PUT', { path: managedPath, content: '{"rules":["edited"]}' });
         assert.deepEqual((await request('/subscribe/clash')).rules[0], { rules: ['edited'] });
+        const templateState = await request('/api/admin/entry', 'POST', {
+            kind: 'templates', index: 0, value: config.templates[0], contents: { path: '{{ toJson($) }}' },
+        });
+        assert.match(templateState.config.templates[0].path, /[0-9a-f-]{36}\.yaml$/);
     } finally {
         if (child && child.exitCode === null) {
             const exited = once(child, 'exit');

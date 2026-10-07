@@ -1,19 +1,5 @@
 {
-  "templates": [
-    {
-      "name": "clash",
-      "target": "clash",
-      "path": "./data/template.yml"
-    }
-  ],
-  "upstreams": [
-    {
-      "name": "demo-clash",
-      "source": "local",
-      "from": "./data/demo-clash.yaml",
-      "format": "yaml",
-      "refresh": 300
-    }
-  ],
+  "templates": [],
+  "upstreams": [],
   "rules": []
 }

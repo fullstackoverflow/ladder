@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { X } from 'lucide-react';
 import { FileEditorPanel } from './FileEditorPanel';
 
@@ -11,7 +10,6 @@ export function InlineFileEditor({
   title: string;
   onClose: () => void;
 }) {
-  const [rawOpen, setRawOpen] = useState(false);
   return (
     <section className="inline-file-editor" aria-label={title}>
       <header className="inline-editor-heading">
@@ -25,7 +23,7 @@ export function InlineFileEditor({
           <X size={16} />
         </button>
       </header>
-      <FileEditorPanel path={path} rawOpen={rawOpen} setRawOpen={setRawOpen} />
+      <FileEditorPanel path={path} />
     </section>
   );
 }
